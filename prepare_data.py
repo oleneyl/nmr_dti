@@ -1,0 +1,3 @@
+from data_utils import create_every_alignment
+
+create_every_alignment()
