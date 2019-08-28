@@ -1,9 +1,11 @@
 from .kernel import get_conf, XMLManager
 
+
 def create_hmdb_alignment(wrapper = None):
     conf = get_conf()
     hmdb_manager = HMDBXMLManager(conf['hmdb']['xml'])
     hmdb_manager.export_to_file(conf['hmdb']['objectives'], conf['hmdb']['export_endpoint'], wrapper=wrapper)
+
 
 class HMDBXMLManager(XMLManager):
     def __init__(self, filename):
