@@ -127,7 +127,11 @@ class NMRQueryEngine(object):
             while len([x for x in os.listdir(target_path) if x not in log_dir_cands]) == 1:
                 target_path = os.path.join(target_path, os.listdir(target_path)[0])
 
-        return NMRDatum.load(target_path, ignore_exception=ignore_exception)
+        datum = NMRDatum.load(target_path, ignore_exception=ignore_exception)
+        if datum == NMRDatum.LOAD_FAIL:
+            return self.QUERY_FAIL
+        else:
+            return datum
 
     def all(self):
         status = defaultdict(list)
