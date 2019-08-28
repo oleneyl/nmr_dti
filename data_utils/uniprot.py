@@ -5,10 +5,9 @@ def create_uniprot_alignment(wrapper=None):
     uniprot_manager = UniprotXMLManager(conf['uniprot']['xml'])
     uniprot_manager.export_to_file(conf['uniprot']['objectives'], conf['uniprot']['export_endpoint'], wrapper=wrapper)
 
-
 class UniprotXMLManager(XMLManager):
     def __init__(self, filename):
-        super(UniprotXMLManager, self).__init__(filename, ['uniprot_id', 'subcellular'], '{http://uniprot.org/uniprot}drug')
+        super(UniprotXMLManager, self).__init__(filename, ['uniprot_id', 'subcellular','sequence'], '{http://uniprot.org/uniprot}entry')
 
     def element_parser(self, el):
         subcellular = el.findall('{http://uniprot.org/uniprot}subcellularLocation')
