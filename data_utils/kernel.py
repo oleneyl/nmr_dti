@@ -63,6 +63,41 @@ class XMLManager():
             for packet in output:
                 f.write(json.dumps(packet)+'\n')
 
+class AbstractLoader():
+    def __init__(self, fname):
+        self.fname = fname
+        self._cache = []
+
+    def parse_data(self, line):
+        return line
+
+    @classmethod
+    def dump_data(self, datum):
+        return datum
+
+    @classmethod
+    def save_from_raw(self, data, fname):
+        with open(fname, 'w') as f:
+            for datum in data:
+                f.write(self.dump_data(datum) + '\n')
+
+    def __iter__(self):
+        if len(self._cache) > 0:
+            for obj in self._cache:
+                yield obj
+        with open(self.fname) as f:
+            for line in f:
+                yield self.parse_data(line)
+
+    def cache_data(self):
+        self._cache = list(self)
+
+    def create_query_map(self, primary_key):
+        output = {}
+        for datum in self:
+            output[datum[primary_key]] = datum
+
+        return output
 
 
 

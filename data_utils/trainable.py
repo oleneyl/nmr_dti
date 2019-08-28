@@ -1,5 +1,4 @@
-from .kernel import get_conf
-from data_loader import JSONDataLoader
+from .data_loader import JSONDataLoader
 
 def join_hmdb_and_uniprot(hmdb_aligned_file, uniprot_aligned_file, output_file_name, wrapper = None):
     '''
