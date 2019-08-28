@@ -25,14 +25,19 @@ class XMLManager():
     def load_xml(self):
         self.xml = elemTree.parse(self.filename)
 
-    def iter_xml(self, wrapper=lambda x: x):
+    def iter_xml(self, wrapper=None):
         path = []
-        for event, elem in wrapper(elemTree.iterparse(self.filename, events=("start", "end"))):
+        iterator = elemTree.iterparse(self.filename, events=("start", "end"))
+        if wrapper is not None:
+            iterator = wrapper(iterator)
+
+        for event, elem in iterator:
             if event == 'start':
                 path.append(elem.tag)
             elif event == 'end':
-                if elem.tag == self.children_tag and len(path) <= 1: #TODO
+                if elem.tag == self.children_tag and len(path) <= 2:
                     yield elem
+                path.pop()
 
     def element_parser(self, el):
         return {}
@@ -47,13 +52,14 @@ class XMLManager():
 
         return pd.DataFrame(output)
 
-    def export_to_file(self, objectives, fname):
+    def export_to_file(self, objectives, fname, wrapper=None):
         output = []
-        for el in self.iter_xml():
+        for el in self.iter_xml(wrapper=wrapper):
             parsed_element = self.element_parser(el)
             output.append({k:parsed_element[k] for k in objectives})
 
-        with open(fname) as f:
+        print(f'Total input {len(output)} detected')
+        with open(fname, 'w') as f:
             for packet in output:
                 f.write(json.dumps(packet)+'\n')
 
