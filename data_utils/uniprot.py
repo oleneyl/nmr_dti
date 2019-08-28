@@ -1,9 +1,11 @@
 from .kernel import get_conf, XMLManager
 
+
 def create_uniprot_alignment(wrapper=None):
     conf = get_conf()
     uniprot_manager = UniprotXMLManager(conf['uniprot']['xml'])
     uniprot_manager.export_to_file(conf['uniprot']['objectives'], conf['uniprot']['export_endpoint'], wrapper=wrapper)
+
 
 class UniprotXMLManager(XMLManager):
     def __init__(self, filename):

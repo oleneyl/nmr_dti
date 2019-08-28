@@ -63,6 +63,7 @@ class XMLManager():
             for packet in output:
                 f.write(json.dumps(packet)+'\n')
 
+
 class AbstractLoader():
     def __init__(self, fname):
         self.fname = fname
