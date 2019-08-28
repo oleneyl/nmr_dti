@@ -1,11 +1,14 @@
 {
-  "hmbd" : {
+  "hmdb" : {
     "xml": "/DATA/meson324/hmdb_metabolites/hmdb_metabolites.xml",
     "export_order" : ["cas_registry_number", "hmdb_id", "inchikey", "protein_associations"],
     "export_endpoint" : "/DATA/meson324/hmdb_metabolites/hmdb_metabolites_export.json",
+    "objectives" : ["cas_registry_number", "hmdb_id", "inchikey", "protein_associations"]
   },
   "uniprot" : {
     "xml" : "/DATA/meson324/uniprot_sprot.xml",
-    "export_order" : [""]
+    "export_order" : [""],
+    "objectives" : ["uniprot_id", "subcellular"],
+    "export_endpoint" : "/DATA/meson324/uniprot_sprot_export.json"
   }
 }
