@@ -6,6 +6,11 @@ import pandas as pd
 CONFIGURATION_FILE_NAME='configuration.json'
 
 
+def change_configuration(conf_file_name):
+    global CONFIGURATION_FILE_NAME
+    CONFIGURATION_FILE_NAME = conf_file_name
+
+
 def get_conf():
     file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIGURATION_FILE_NAME)
     with open(file_path) as f:

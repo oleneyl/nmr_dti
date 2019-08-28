@@ -1,7 +1,7 @@
 from .hmdb import create_hmdb_alignment
 from .uniprot import create_uniprot_alignment
 from .trainable import join_hmdb_and_uniprot
-from .kernel import get_conf
+from .kernel import get_conf, change_configuration
 
 def create_every_alignment(wrapper=None):
     print('Export HMBD database...')
