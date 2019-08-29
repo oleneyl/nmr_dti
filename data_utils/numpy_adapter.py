@@ -6,6 +6,25 @@ computer - recongizable numpy objects.
 import numpy as np
 import sentencepiece as spm
 
+
+def adapter_args(parser):
+    group = parser.add_group('adapter')
+
+    group.add_argument('--protein_vocab', type=str)
+    group.add_argument('--chemical_vocab', type=str)
+    group.add_argument('--nmr_array_size', type=int, default=1000)
+    group.add_argument('--min_ppm', type=float, default=0.0)
+    group.add_argument('--max_ppm', type=float, default=10.0)
+
+
+def get_adapter(args):
+    protein_vocab = SentencePieceVocab(args.protein_vocab)
+    chemical_vocab = SentencePieceVocab(args.chemical_vocab)
+
+    return NMRAdapter(protein_vocab, chemical_vocab, nmr_array_size=args.nmr_array_size,
+                      min_ppm=args.min_ppm, max_ppm=args.max_ppm)
+
+
 class Vocab(object):
     """Vocab converts given sequence into list - of - index
     """
@@ -36,8 +55,6 @@ class SentencePieceVocab(Vocab):
 
 class NMRAdapter():
     def __init__(self, protein_vocab, chemical_vocab, nmr_array_size=1000,
-                 protein_sequence_size=1000,
-                 chemical_sequence_size=100,
                  min_ppm=0,
                  max_ppm=10):
         self.protein_vocab = protein_vocab
