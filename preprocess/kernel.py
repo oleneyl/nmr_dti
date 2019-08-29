@@ -69,7 +69,7 @@ class XMLManager():
                 f.write(json.dumps(packet)+'\n')
 
 
-class AbstractLoader():
+class AbstractReader():
     def __init__(self, fname):
         self.fname = fname
         self._cache = []

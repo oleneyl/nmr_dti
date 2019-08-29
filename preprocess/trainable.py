@@ -1,4 +1,4 @@
-from .data_loader import JSONDataLoader
+from .data_reader import JSONDataReader
 
 def join_hmdb_and_uniprot(hmdb_aligned_file, uniprot_aligned_file, output_file_name, wrapper = None):
     '''
@@ -10,8 +10,8 @@ def join_hmdb_and_uniprot(hmdb_aligned_file, uniprot_aligned_file, output_file_n
     :param output_file_name:
     :return:
     '''
-    hmdb_data = JSONDataLoader(hmdb_aligned_file)
-    uniprot_data = JSONDataLoader(uniprot_aligned_file)
+    hmdb_data = JSONDataReader(hmdb_aligned_file)
+    uniprot_data = JSONDataReader(uniprot_aligned_file)
     query_map = uniprot_data.create_query_map('uniprot_id')
 
     iterator = wrapper(hmdb_data) if wrapper is not None else hmdb_data
@@ -25,4 +25,4 @@ def join_hmdb_and_uniprot(hmdb_aligned_file, uniprot_aligned_file, output_file_n
                 output.update(query_map[uniprot_id])
                 joined_data.append(output)
 
-    JSONDataLoader.save_from_raw(joined_data, output_file_name)
+    JSONDataReader.save_from_raw(joined_data, output_file_name)

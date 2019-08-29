@@ -60,7 +60,7 @@ class NMRAdapter():
         nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
                                         self.min_ppm, self.max_ppm, self.nmr_array_size)
 
-        return protein_indices, chemical_indices, nmr_values
+        return datum['binds'], protein_indices, chemical_indices, nmr_values
 
     def __call__(self, data_loader):
         for item in data_loader:

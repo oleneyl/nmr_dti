@@ -8,10 +8,13 @@
   "uniprot" : {
     "xml" : "/DATA/meson324/uniprot_sprot.xml",
     "export_order" : [""],
-    "objectives" : ["uniprot_id", "subcellular"],
+    "objectives" : ["uniprot_id", "subcellular","sequence"],
     "export_endpoint" : "/DATA/meson324/uniprot_sprot_export.json"
   },
   "trainable" : {
     "export_endpoint" : "/DATA/meson324/trainable.json"
+  },
+  "nmr" : {
+    "engine_dir" : "/DATA/meson324/hmdb_fid_files_unzipped"
   }
 }
