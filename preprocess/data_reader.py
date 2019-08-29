@@ -24,10 +24,23 @@ class NMRDataReader(JSONDataReader):
     def parse_data(self, line):
         meta_info = super(NMRDataReader, self).parse_data(line)
         hmdb_id = meta_info['hmdb_id']
-        datum = self.nmr_query_engine.query(hmdb_id)
+        if len(hmdb_id) == 0:
+            return meta_info
+        datum = self.nmr_query_engine.query(int(hmdb_id[0][4:]))
         if datum != NMRQueryEngine.QUERY_FAIL:
             freq, rg = datum.get_ft()
             meta_info['nmr_freq'] = freq
             meta_info['nmr_rg'] = rg
 
         return meta_info
+
+
+class RestrictiveNMRDataReader(NMRDataReader):
+    def __iter__(self):
+        with open(self.fname) as f:
+            for line in f:
+                output = self.parse_data(line)
+                if 'nmr_freg' not in output:
+                    continue
+                else:
+                    yield output
