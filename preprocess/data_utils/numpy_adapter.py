@@ -8,18 +8,20 @@ import sentencepiece as spm
 
 
 def adapter_args(parser):
-    group = parser.add_group('adapter')
+    group = parser.add_argument_group('adapter')
 
     group.add_argument('--protein_vocab', type=str)
     group.add_argument('--chemical_vocab', type=str)
     group.add_argument('--nmr_array_size', type=int, default=1000)
     group.add_argument('--min_ppm', type=float, default=0.0)
     group.add_argument('--max_ppm', type=float, default=10.0)
-
+    group.add_argument('--protein_vocab_size', type=int, default=1000)
+    group.add_argument('--chemical_vocab_size', type=int, default=1000)
 
 def get_adapter(args):
     protein_vocab = SentencePieceVocab(args.protein_vocab)
-    chemical_vocab = SentencePieceVocab(args.chemical_vocab)
+    # chemical_vocab = SentencePieceVocab(args.chemical_vocab)
+    chemical_vocab = DummyVocab()
 
     return NMRAdapter(protein_vocab, chemical_vocab, nmr_array_size=args.nmr_array_size,
                       min_ppm=args.min_ppm, max_ppm=args.max_ppm)
@@ -40,6 +42,9 @@ class Vocab(object):
     def decode(self, indices_array):
         raise NotImplementedError
 
+class DummyVocab(Vocab):
+    def encode(self, sequence):
+        return [0]
 
 class SentencePieceVocab(Vocab):
     def __init__(self, vocab_file):
@@ -73,11 +78,11 @@ class NMRAdapter():
 
     def adapt(self, datum):
         protein_indices = self.protein_vocab(datum['sequence'])
-        chemical_indices = self.chemical_vocab(datum['smiles'])
+        chemical_indices = self.chemical_vocab([])  #Not using yet
         nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
                                         self.min_ppm, self.max_ppm, self.nmr_array_size)
 
-        return datum['binds'], protein_indices, chemical_indices, nmr_values
+        return float(int(datum['binds'])), protein_indices, chemical_indices, nmr_values
 
     def __call__(self, data_loader):
         for item in data_loader:
