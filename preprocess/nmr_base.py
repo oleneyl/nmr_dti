@@ -7,6 +7,8 @@ import os
 import zipfile
 from tqdm import tqdm
 from collections import defaultdict
+import numpy as np
+
 
 class NMRDatum(object):
     LOAD_FAIL = 1
@@ -41,10 +43,13 @@ class NMRDatum(object):
     def get_ft(self):
         data = ng.proc_base.fft(self._data)
         data = ng.proc_base.ps(data, p0=0.0)  # phase correction
-        data = ng.proc_base.abs(data)
+        if np.iscomplex(data[0]).any():
+            data = ng.proc_base.abs(data)
         data = ng.proc_base.di(data)  # discard the imaginaries
         if self.dtype == 'bruker':
-            data = list(reversed(data))
+            data = list(reversed(data.tolist()))
+        else:
+            data = list(data.tolist())
 
         uc = self.unit_conversion()
         return data, (uc.ppm(0), uc.ppm(len(data)))
@@ -125,7 +130,7 @@ class NMRQueryEngine(object):
             target_path = os.path.join(self.dirname, target_path)
             # get innermost directory
             while len([x for x in os.listdir(target_path) if x not in log_dir_cands]) == 1:
-                target_path = os.path.join(target_path, os.listdir(target_path)[0])
+                target_path = os.path.join(target_path, [x for x in os.listdir(target_path) if x not in log_dir_cands][0])
 
         datum = NMRDatum.load(target_path, ignore_exception=ignore_exception)
         if datum == NMRDatum.LOAD_FAIL:
