@@ -9,20 +9,41 @@ def add_model_args(parser):
     group.add_argument('--nmr_model', type=str, default='cnn')
     group.add_argument('--protein_model', type=str, default='gru')
     group.add_argument('--chemical_model', type=str, default='gru')
+    group.add_argument('--protein_embedding_size', type=int, default=128)
+    group.add_argument('--chemical_embedding_size', type=int, default=128)
+
+    # Sequencial model control
+    group.add_argument('--sequential_hidden_size', type=int, default=100)
+    group.add_argument('--sequential_dropout', type=float, default=0.5)
+    group.add_argument('--sequential_dense', type=int, default=64)
+
+    # CNN model control
+    group.add_argument('--cnn_filter_size', type=int, default=5)
+    group.add_argument('--cnn_filter_number', type=int, default=5)
+    group.add_argument('--cnn_hidden_layer', type=int, default=60)
+
+    # Concat-model control
+    group.add_argument('--concat_hidden_layer_size', type=int, default=40)
+    group.add_argument('--concat_dropout', type=float, default=0.5)
 
 
 def build_model(args, protein_encoded, nmr_array, smiles_encoded):
     """
     Create output generation model from given placeholders
     """
-    protein_code = RNNProteinModel(args).compile(protein_encoded)
-    # smiles_code = smiles_model(smiles_encoded)
-    nmr_code = NMRModel(args).compile(nmr_array)
+    protein_embedding = tf.keras.layers.Embedding(args.protein_vocab_size, args.protein_embedding_size)
+    smile_embedding = tf.keras.layers.Embedding(args.chemical_vocab_size, args.chemical_embedding_size)
+
+    if args.protein_model == 'gru':
+        protein_code = RNNProteinModel(args).compile(protein_embedding(protein_encoded))
+    # smiles_code = smiles_model(smile_embedding(smiles_encoded))
+    if args.nmr_model == 'cnn':
+        nmr_code = NMRModel(args).compile(nmr_array)
 
     # Concat three values
     embedding = tf.concat([protein_code, nmr_code], 1)
-    embedding = tf.keras.layers.Dense(40, activation='relu')(embedding)
-    embedding = tf.keras.layers.Dropout(0.5)(embedding)
+    embedding = tf.keras.layers.Dense(args.concat_hidden_layer_size, activation='relu')(embedding)
+    embedding = tf.keras.layers.Dropout(args.concat_dropout)(embedding)
     embedding = tf.keras.layers.BatchNormalization()(embedding)
     embedding = tf.keras.layers.Dense(1)(embedding)
 

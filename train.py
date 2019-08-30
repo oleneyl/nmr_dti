@@ -25,11 +25,8 @@ def train(args):
     smile_input = tf.placeholder(shape=[None, args.chemical_sequence_length], dtype=tf.int32, name='smile_input')
     result_pl = tf.placeholder(shape=[None, 1], dtype=tf.float32, name='result_pl')
 
-    protein_embedding = tf.keras.layers.Embedding(args.protein_vocab_size, 64)
-    smile_embedding = tf.keras.layers.Embedding(args.chemical_vocab_size, 64)
     # Create graph
-
-    binary_result = get_model(args, protein_embedding(protein_input), nmr_input, smile_embedding(smile_input))
+    binary_result = get_model(args, protein_input, nmr_input, smile_input)
     loss_op, optimize_op = get_optimizer(args, binary_result, result_pl)
 
     var_sizes = [np.product(list(map(int, v.shape))) * v.dtype.size

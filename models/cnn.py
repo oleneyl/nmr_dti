@@ -9,22 +9,22 @@ class CNNComponent():
 
 class NMRModel(BaseModel):
     def init_model(self, args):
-        filter_size = 5
+        filter_size = args.cnn_filter_size
         sequential = tf.keras.Sequential()
-        sequential.add(tf.keras.layers.Conv1D(filter_size, 3, activation='relu'))
+        sequential.add(tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu'))
         sequential.add(tf.keras.layers.BatchNormalization())
         sequential.add(tf.keras.layers.MaxPool1D(pool_size=2))
 
-        sequential.add(tf.keras.layers.Conv1D(filter_size, 3, activation='relu'))
+        sequential.add(tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu'))
         sequential.add(tf.keras.layers.BatchNormalization())
         sequential.add(tf.keras.layers.MaxPool1D(pool_size=2))
 
-        sequential.add(tf.keras.layers.Conv1D(filter_size, 3, activation='relu'))
+        sequential.add(tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu'))
         sequential.add(tf.keras.layers.BatchNormalization())
         sequential.add(tf.keras.layers.MaxPool1D(pool_size=2))
 
         sequential.add(tf.keras.layers.Flatten())
-        sequential.add(tf.keras.layers.Dense(30))
+        sequential.add(tf.keras.layers.Dense(args.cnn_hidden_layer))
 
         self.sequential = sequential
 
