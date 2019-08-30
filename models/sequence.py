@@ -5,7 +5,7 @@ import tensorflow as tf
 class RNNProteinModel(BaseModel):
     def init_model(self, args):
         hidden_units = 100
-        rnn_cell = tf.keras.layers.GRUCell(hidden_units, activation='relu')
+        rnn_cell = tf.keras.layers.GRUCell(hidden_units, activation='relu', dropout=0.2)
 
         sequential = tf.keras.Sequential()
         sequential.add(tf.keras.layers.RNN(rnn_cell))

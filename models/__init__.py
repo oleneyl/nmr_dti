@@ -22,8 +22,9 @@ def build_model(args, protein_encoded, nmr_array, smiles_encoded):
     # Concat three values
     embedding = tf.concat([protein_code, nmr_code], 1)
     embedding = tf.keras.layers.Dense(40, activation='relu')(embedding)
+    embedding = tf.keras.layers.Dropout(0.5)(embedding)
     embedding = tf.keras.layers.BatchNormalization()(embedding)
-    embedding = tf.keras.layers.Dense(1, activation='sigmoid')(embedding)
+    embedding = tf.keras.layers.Dense(1)(embedding)
 
     return embedding
 
