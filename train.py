@@ -36,45 +36,41 @@ def train(args):
                  for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)]
     print('Variable size', sum(var_sizes) / (1024 ** 2), 'MB')
 
-    #Train
     initializer = tf.initializers.global_variables()
 
     progress_handler = get_progress_handler(args)
     validation_handler = get_valid_progress_handler(args)
 
     sess = tf.Session()
-
     sess.run(initializer)
 
     print('Training start!')
-    for epoch in range(1, args.epoch+1):
-        print(f'Epoch {epoch} start')
-        train_data, valid_data = get_data_loader(args)
-        for result, protein, smile, nmr in train_data:    # TODO : batch_iterator. or use tf.dataLoader ?
+
+    def train_step(data_loader, progress):
+        for result, protein, smile, nmr in data_loader:
             output, loss, _ = sess.run([binary_result, loss_op, optimize_op], feed_dict={
                 protein_input: protein,
                 nmr_input: nmr,
                 smile_input: smile,
                 result_pl: result
             })
-            progress_handler.log({
+            progress.log({
                 'loss': loss,
                 'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, output)]
             })
 
-        for result, protein, smile, nmr in valid_data:
-            output, loss, _ = sess.run([binary_result, loss_op, optimize_op], feed_dict={
-                protein_input: protein,
-                nmr_input: nmr,
-                smile_input: smile,
-                result_pl: result
-            })
-            validation_handler.log({
-                'loss': loss,
-                'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, output)]
-            })
+    for epoch in range(1, args.epoch+1):
+        print(f'Epoch {epoch} start')
+        train_data, valid_data = get_data_loader(args)
+
+        # Training
+        train_step(train_data, progress_handler)
+
+        # Validation
+        train_step(valid_data, validation_handler)
         print('--VALIDATION RESULT--')
         validation_handler.emit()
+
 
 if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"] = "3"
