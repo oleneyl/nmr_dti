@@ -1,13 +1,14 @@
 import json
-from .kernel import AbstractReader
+from .kernel import AbstractFileReader
 from .nmr_base import NMRQueryEngine
 
-class LineDataReader(AbstractReader):
+
+class LineDataReader(AbstractFileReader):
     def parse_data(self, line):
         return line.strip()
 
 
-class JSONDataReader(AbstractReader):
+class JSONDataReader(AbstractFileReader):
     def parse_data(self, line):
         return json.loads(line.strip())
 

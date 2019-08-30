@@ -1,8 +1,9 @@
 from tqdm import tqdm
 from argparse import ArgumentParser
 
-from preprocess import create_every_alignment, create_trainable_data, change_configuration, mix_nmr
+from preprocess import create_every_alignment, create_trainable_data, change_configuration, mix_nmr, strict_split_data
 from preprocess.tokenize import create_protein_vocab
+
 
 def get_args():
     parser = ArgumentParser()
@@ -23,8 +24,9 @@ if __name__=='__main__':
 
     if args.task == 'create_all':
         create_every_alignment(wrapper=tqdm)
-    elif args.task == 'create_join':
-        create_trainable_data(args.split_ratio, wrapper=tqdm, use_nmr=args.nmr)
+    elif args.task == 'create_dataset':
+        # create_trainable_data(args.split_ratio, wrapper=tqdm, use_nmr=args.nmr)
+        strict_split_data(args.split_ratio, save_dir=args.output_prefix, wrapper=tqdm, use_nmr=args.nmr)
     elif args.task == 'protein_vocab':
         create_protein_vocab(args.output_prefix)
     elif args.task == 'mix_nmr':
