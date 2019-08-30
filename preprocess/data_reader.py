@@ -27,7 +27,7 @@ class NMRDataReader(JSONDataReader):
         if len(hmdb_id) == 0:
             return meta_info
         datum = self.nmr_query_engine.query(int(hmdb_id[0][4:]))
-        if datum != NMRQueryEngine.QUERY_FAIL:
+        if datum != NMRQueryEngine.QUERY_FAIL and len(datum._data.shape) == 1:
             freq, rg = datum.get_ft()
             meta_info['nmr_freq'] = freq
             meta_info['nmr_rg'] = rg
