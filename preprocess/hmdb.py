@@ -9,7 +9,7 @@ def create_hmdb_alignment(wrapper = None):
 
 class HMDBXMLManager(XMLManager):
     def __init__(self, filename):
-        super(HMDBXMLManager, self).__init__(filename, ['cas_registry_number', 'hmdb_id', 'inchikey', 'protein_associations'], '{http://www.hmdb.ca}metabolite')
+        super(HMDBXMLManager, self).__init__(filename, ['cas_registry_number', 'hmdb_id', 'inchikey', 'protein_associations','smiles'], '{http://www.hmdb.ca}metabolite')
 
     def iter_xml(self, wrapper=lambda x: x):
         for el in super(HMDBXMLManager, self).iter_xml(wrapper=wrapper):
