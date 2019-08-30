@@ -72,8 +72,12 @@ class NMRAdapter():
     def normalize_nmr(cls, nmr_data, nmr_min, nmr_max, min_ppm, max_ppm, size):
         """Fit given data into min_ppm ~ max_ppm with given size.
         """
-        target_point = np.arange(nmr_min, nmr_max, (nmr_max - nmr_min)/size)
-        current_point = np.arange(min_ppm, max_ppm, (max_ppm-min_ppm)/size)
+        from pprint import pprint
+
+        nmr_data = np.array(nmr_data)
+        nmr_data = nmr_data / np.max(nmr_data)
+        target_point = np.linspace(nmr_min, nmr_max, size)
+        current_point = np.linspace(min_ppm, max_ppm, len(nmr_data))
         return np.interp(target_point, current_point, nmr_data, 0.0, 0.0)
 
     def adapt(self, datum):
@@ -82,7 +86,7 @@ class NMRAdapter():
         nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
                                         self.min_ppm, self.max_ppm, self.nmr_array_size)
 
-        return float(int(datum['binds'])), protein_indices, chemical_indices, nmr_values
+        return float(int(datum['bind'])), protein_indices, chemical_indices, nmr_values
 
     def __call__(self, data_loader):
         for item in data_loader:
