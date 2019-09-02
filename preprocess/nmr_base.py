@@ -20,6 +20,9 @@ class NMRDatum(object):
         self.dim = dim
         self.udic = {}
 
+    def shape(self):
+        return self._data.shape
+
     def help_udic(self):
         udic = {}
         if self.dtype == 'varian':
@@ -102,24 +105,25 @@ class NMRDatum(object):
 
 class NMRQueryEngine(object):
     QUERY_FAIL = 0
+    DIM_INDICATOR = ['!NOT_EXIST', 'oned', 'twod']
 
-    ## Loads unzipped directory
+    # Loads unzipped directory
     def __init__(self, dirname):
         self.dirname = dirname
         self.dirs = os.listdir(dirname)
 
     @classmethod
-    def extract(self, origin_dir, target_dir):
+    def extract(cls, origin_dir, target_dir):
         fnames = os.listdir(origin_dir)
         for fname in tqdm(fnames):
             with zipfile.ZipFile(os.path.join(origin_dir, fname), 'r') as zip_ref:
                 zip_ref.extractall(os.path.join(target_dir, fname))
 
-    def query(self, hmdb_id, ignore_exception=True):
+    def query(self, hmdb_id, ignore_exception=True, dim=1):
         target_path = None
         for path in self.dirs:
             if int(path.split('_')[0][4:]) == hmdb_id:
-                if 'oned' in path:
+                if self.DIM_INDICATOR[dim] in path:
                     target_path = path
                     break
 
