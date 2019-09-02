@@ -12,22 +12,24 @@ class NMRModel(BaseModel):
         super(NMRModel, self).__init__(args)
 
         filter_size = args.cnn_filter_size
-        sequential = tf.keras.Sequential()
-        sequential.add(tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu'))
-        sequential.add(tf.keras.layers.BatchNormalization())
-        sequential.add(tf.keras.layers.MaxPool1D(pool_size=2))
 
-        sequential.add(tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu'))
-        sequential.add(tf.keras.layers.BatchNormalization())
-        sequential.add(tf.keras.layers.MaxPool1D(pool_size=2))
+        input_tensor_reshaped = tf.keras.backend.expand_dims(input_tensor, axis=-1)
 
-        sequential.add(tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu'))
-        sequential.add(tf.keras.layers.BatchNormalization())
-        sequential.add(tf.keras.layers.MaxPool1D(pool_size=2))
+        first_layer = tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu')(input_tensor_reshaped)
+        first_layer = tf.keras.layers.BatchNormalization()(first_layer, training=is_train)
+        first_layer = tf.keras.layers.MaxPool1D(pool_size=2)(first_layer)
 
-        sequential.add(tf.keras.layers.Flatten())
-        sequential.add(tf.keras.layers.Dense(args.cnn_hidden_layer))
+        second_layer = tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu')(first_layer)
+        second_layer = tf.keras.layers.BatchNormalization()(second_layer, training=is_train)
+        second_layer = tf.keras.layers.MaxPool1D(pool_size=2)(second_layer)
 
-        self.output = sequential(tf.keras.backend.expand_dims(input_tensor, axis=-1))
+        third_layer = tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu')(second_layer)
+        third_layer = tf.keras.layers.BatchNormalization()(third_layer, training=is_train)
+        third_layer = tf.keras.layers.MaxPool1D(pool_size=2)(third_layer)
+
+        output = tf.keras.layers.Flatten()(third_layer)
+        output = tf.keras.layers.Dense(args.cnn_hidden_layer)(output)
+
+        self.output = output
 
 

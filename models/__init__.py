@@ -44,7 +44,7 @@ def build_model(args, protein_encoded, nmr_array, smiles_encoded, is_train=True)
     embedding = tf.concat([protein_code.output, nmr_code.output], 1)
     embedding = tf.keras.layers.Dense(args.concat_hidden_layer_size, activation='relu')(embedding)
     embedding = tf.keras.layers.Dropout(args.concat_dropout)(embedding, training=is_train)
-    embedding = tf.keras.layers.BatchNormalization()(embedding)
+    embedding = tf.keras.layers.BatchNormalization()(embedding, training=is_train)
     embedding = tf.keras.layers.Dense(1)(embedding)
 
     return embedding
