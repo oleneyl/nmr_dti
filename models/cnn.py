@@ -8,7 +8,9 @@ class CNNComponent():
 
 
 class NMRModel(BaseModel):
-    def init_model(self, args):
+    def __init__(self, args, input_tensor, is_train=True):
+        super(NMRModel, self).__init__(args)
+
         filter_size = args.cnn_filter_size
         sequential = tf.keras.Sequential()
         sequential.add(tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu'))
@@ -26,9 +28,6 @@ class NMRModel(BaseModel):
         sequential.add(tf.keras.layers.Flatten())
         sequential.add(tf.keras.layers.Dense(args.cnn_hidden_layer))
 
-        self.sequential = sequential
-
-    def compile(self, input_tensor):
-        return self.sequential(tf.keras.backend.expand_dims(input_tensor, axis=-1))
+        self.output = sequential(tf.keras.backend.expand_dims(input_tensor, axis=-1))
 
 

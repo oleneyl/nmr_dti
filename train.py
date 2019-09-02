@@ -10,6 +10,8 @@ from preprocess.data_utils.data_loader import get_data_loader
 
 def get_optimizer(args, logits, labels):
     loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
+
+    # Batch normalization
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
         optim_op = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(loss)
@@ -26,7 +28,8 @@ def train(args):
     result_pl = tf.placeholder(shape=[None, 1], dtype=tf.float32, name='result_pl')
 
     # Create graph
-    binary_result = get_model(args, protein_input, nmr_input, smile_input)
+    is_train = tf.placeholder(shape=[], dtype=tf.bool, name='trainable')
+    binary_result = get_model(args, protein_input, nmr_input, smile_input, is_train=is_train)
     loss_op, optimize_op = get_optimizer(args, binary_result, result_pl)
 
     var_sizes = [np.product(list(map(int, v.shape))) * v.dtype.size
@@ -43,13 +46,14 @@ def train(args):
 
     print('Training start!')
 
-    def train_step(data_loader, progress):
+    def train_step(data_loader, progress, training_mode='train'):
         for result, protein, smile, nmr in data_loader:
             output, loss, _ = sess.run([binary_result, loss_op, optimize_op], feed_dict={
                 protein_input: protein,
                 nmr_input: nmr,
                 smile_input: smile,
-                result_pl: result
+                result_pl: result,
+                is_train: (training_mode == 'train')
             })
             progress.log({
                 'loss': loss,
@@ -61,10 +65,10 @@ def train(args):
         train_data, valid_data = get_data_loader(args)
 
         # Training
-        train_step(train_data, progress_handler)
+        train_step(train_data, progress_handler, training_mode='train')
 
         # Validation
-        train_step(valid_data, validation_handler)
+        train_step(valid_data, validation_handler, training_mode='valid')
         print('--VALIDATION RESULT--')
         validation_handler.emit()
 

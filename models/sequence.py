@@ -3,13 +3,11 @@ import tensorflow as tf
 
 
 class RNNProteinModel(BaseModel):
-    def init_model(self, args):
-        rnn_cell = tf.keras.layers.GRUCell(args.sequential_hidden_size, activation='relu', dropout=args.sequential_dropout)
+    def __init__(self, args, input_tensor, is_train=True):
+        super(RNNProteinModel, self).__init__(args)
+        rnn_cell = tf.keras.layers.GRUCell(args.sequential_hidden_size, activation='relu',
+                                           dropout=args.sequential_dropout)
 
-        sequential = tf.keras.Sequential()
-        sequential.add(tf.keras.layers.RNN(rnn_cell))
-        sequential.add(tf.keras.layers.Dense(args.sequential_dense))
-        self.sequential = sequential
-
-    def compile(self, input_tensor):
-        return self.sequential(input_tensor)
+        output = tf.keras.layers.RNN(rnn_cell)(input_tensor, training=is_train)
+        output = tf.keras.layers.Dense(args.sequential_dense)(output)
+        self.output = output
