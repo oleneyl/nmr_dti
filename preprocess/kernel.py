@@ -98,16 +98,16 @@ class AbstractFileReader(AbstractIterable):
         return line
 
     @classmethod
-    def dump_data(self, datum):
+    def dump_data(cls, datum):
         return datum
 
     @classmethod
-    def save_from_raw(self, data, fname):
+    def save_from_raw(cls, data, fname):
         with open(fname, 'w') as f:
             for datum in data:
                 try:
-                    f.write(self.dump_data(datum) + '\n')
-                except:
+                    f.write(cls.dump_data(datum) + '\n')
+                except Exception as e:
                     print(datum)
                     raise
 
