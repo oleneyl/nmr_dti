@@ -1,11 +1,11 @@
-from .data_reader import NMRDataReader
-from .kernel import AbstractReader
+from .data_reader import NMRDataReader, JSONDataReader
+from .kernel import BaseIterable
 from collections import defaultdict, OrderedDict
 import numpy as np
 
 
 def create_positive_dataset(hmdb_data, uniprot_data, wrapper=None):
-    query_map = AbstractReader(uniprot_data).create_query_map('uniprot_id')
+    query_map = BaseIterable(uniprot_data).create_query_map('uniprot_id')
 
     iterator = wrapper(hmdb_data) if wrapper is not None else hmdb_data
 

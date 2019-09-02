@@ -7,10 +7,12 @@ from .data_reader import JSONDataReader
 import random
 import os
 
+
 def mix_nmr(output_file_name, wrapper = None):
     conf = get_conf()
     mix_nmr_into_hmdb(conf['hmdb']['export_endpoint'], conf['nmr']['engine_dir'], output_file_name,
                       wrapper=wrapper)
+
 
 def create_every_alignment(wrapper=None):
     print('Export HMBD database...')

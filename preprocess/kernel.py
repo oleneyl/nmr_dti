@@ -17,7 +17,7 @@ def get_conf():
         return json.load(f)
 
 
-class XMLManager():
+class XMLManager(object):
     def __init__(self, filename, keywords, children_tag):
         self.keywords = keywords
         self.xml = None
@@ -50,7 +50,8 @@ class XMLManager():
     def get_dataframe(self, iter_size=-1):
         output = {k: [] for k in self.keywords}
         for idx, el in enumerate(list(self.xml.getroot())):
-            if iter_size > 0 and idx > iter_size: break
+            if idx > iter_size > 0:
+                break
             parsed_element = self.element_parser(el)
             for k in self.keywords:
                 output[k].append(parsed_element.get(k, None))
@@ -69,7 +70,26 @@ class XMLManager():
                 f.write(json.dumps(packet)+'\n')
 
 
-class AbstractReader():
+class AbstractIterable(object):
+    def create_query_map(self, primary_key):
+        output = {}
+        for datum in self:
+            output[datum[primary_key]] = datum
+
+        return output
+
+
+class BaseIterable(AbstractIterable):
+    def __init__(self, iterable):
+        self._iterable = iterable
+        self._cache = []
+
+    def __iter__(self):
+        for x in self._iterable:
+            yield x
+
+
+class AbstractFileReader(AbstractIterable):
     def __init__(self, fname):
         self.fname = fname
         self._cache = []
@@ -85,7 +105,11 @@ class AbstractReader():
     def save_from_raw(self, data, fname):
         with open(fname, 'w') as f:
             for datum in data:
-                f.write(self.dump_data(datum) + '\n')
+                try:
+                    f.write(self.dump_data(datum) + '\n')
+                except:
+                    print(datum)
+                    raise
 
     def __iter__(self):
         if len(self._cache) > 0:
@@ -97,14 +121,3 @@ class AbstractReader():
 
     def cache_data(self):
         self._cache = list(self)
-
-    def create_query_map(self, primary_key):
-        output = {}
-        for datum in self:
-            output[datum[primary_key]] = datum
-
-        return output
-
-
-
-
