@@ -1,3 +1,6 @@
-class BaseModel():
+class BaseModel(object):
     def __init__(self, args):
-        pass
+        self.output = None
+
+    def get_output(self):
+        return self.output

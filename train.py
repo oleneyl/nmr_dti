@@ -14,7 +14,11 @@ def get_optimizer(args, logits, labels):
     # Batch normalization
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-        optim_op = tf.train.AdamOptimizer(learning_rate=args.lr).minimize(loss)
+        optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
+        grads = optimizer.compute_gradients(loss)
+        clipped_grads = [(tf.clip_by_value(grad, -1 * args.grad_clip,  args.grad_clip), var) for grad, var in grads
+                         if grad is not None]
+        optim_op = optimizer.apply_gradients(clipped_grads)
 
     return loss, optim_op
 
@@ -29,7 +33,7 @@ def train(args):
 
     # Create graph
     is_train = tf.placeholder(shape=[], dtype=tf.bool, name='trainable')
-    binary_result = get_model(args, protein_input, nmr_input, smile_input, is_train=is_train)
+    binary_result, model = get_model(args, protein_input, nmr_input, smile_input, is_train=is_train)
     loss_op, optimize_op = get_optimizer(args, binary_result, result_pl)
 
     var_sizes = [np.product(list(map(int, v.shape))) * v.dtype.size
@@ -46,19 +50,41 @@ def train(args):
 
     print('Training start!')
 
-    def train_step(data_loader, progress, training_mode='train'):
-        for result, protein, smile, nmr in data_loader:
-            output, loss, _ = sess.run([binary_result, loss_op, optimize_op], feed_dict={
-                protein_input: protein,
-                nmr_input: nmr,
-                smile_input: smile,
-                result_pl: result,
-                is_train: (training_mode == 'train')
-            })
+    def train_step(data_loader, progress, training_mode='train', manual_event_tide=1000):
+        _is_train = (training_mode == 'train')
+        for idx, (result, protein, smile, nmr) in enumerate(data_loader):
+            if _is_train:
+                output, loss, _ = sess.run([binary_result, loss_op, optimize_op], feed_dict={
+                    protein_input: protein,
+                    nmr_input: nmr,
+                    smile_input: smile,
+                    result_pl: result,
+                    is_train: True
+                })
+            else:
+                output, loss = sess.run([binary_result, loss_op], feed_dict={
+                    protein_input: protein,
+                    nmr_input: nmr,
+                    smile_input: smile,
+                    result_pl: result,
+                    is_train: False
+                })
             progress.log({
                 'loss': loss,
                 'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, output)]
             })
+            if (idx +1) % manual_event_tide == 0:
+                # Define manula events
+                print('--- Displaying model output inspection ---')
+                result = sess.run(model.inspect_model_output(), feed_dict={
+                    protein_input: protein,
+                    nmr_input: nmr,
+                    smile_input: smile,
+                    result_pl: result,
+                    is_train: False
+                })
+                for x, name in zip(result, ['nmr','protein','chemical']):
+                    print(name, x[0])
 
     for epoch in range(1, args.epoch+1):
         print(f'Epoch {epoch} start')
@@ -66,7 +92,7 @@ def train(args):
 
         # Training
         train_step(train_data, progress_handler, training_mode='train')
-
+        progress_handler.emit()
         # Validation
         train_step(valid_data, validation_handler, training_mode='valid')
         print('--VALIDATION RESULT--')
