@@ -16,15 +16,12 @@ class NMRModel(BaseModel):
         input_tensor_reshaped = tf.keras.backend.expand_dims(input_tensor, axis=-1)
 
         first_layer = tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number, activation='relu')(input_tensor_reshaped)
-        first_layer = tf.keras.layers.BatchNormalization()(first_layer, training=is_train)
         first_layer = tf.keras.layers.MaxPool1D(pool_size=2)(first_layer)
 
         second_layer = tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number*2, activation='relu')(first_layer)
-        second_layer = tf.keras.layers.BatchNormalization()(second_layer, training=is_train)
         second_layer = tf.keras.layers.MaxPool1D(pool_size=2)(second_layer)
 
         third_layer = tf.keras.layers.Conv1D(filter_size, args.cnn_filter_number*3, activation='relu')(second_layer)
-        third_layer = tf.keras.layers.BatchNormalization()(third_layer, training=is_train)
         third_layer = tf.keras.layers.MaxPool1D(pool_size=2)(third_layer)
 
         output = tf.keras.layers.Flatten()(third_layer)
