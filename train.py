@@ -55,6 +55,8 @@ def train(args):
     # Tensorboard tracking
     for variable in tf.trainable_variables():
         summary_handler.hist(variable.name, variable)
+
+    summary_handler.hist('prediction', binary_result)
     summary_handler.track('loss', loss_op)
     summary_handler.create_summary(global_step)
 
@@ -86,7 +88,8 @@ def train(args):
                 })
             progress.log({
                 'loss': loss,
-                'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, output)]
+                'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, output)],
+                'input_sample': [x[0] for x in (result, protein, smile, nmr, output)]
             })
             if summary:
                 summary.create_summary(sess.run(global_step), feed_dict={
@@ -96,7 +99,7 @@ def train(args):
                     result_pl: result,
                     is_train: False
                 })
-            if (idx +1) % manual_event_tide == 0:
+            if (idx + 1) % manual_event_tide == 0:
                 # Define manula events
                 print('--- Displaying model output inspection ---')
                 result = sess.run(model.inspect_model_output(), feed_dict={
@@ -120,6 +123,10 @@ def train(args):
         train_step(valid_data, validation_handler, training_mode='valid')
         print('--VALIDATION RESULT--')
         validation_handler.emit()
+
+        progress_handler.flush()
+        validation_handler.flush()
+        #print(validation_handler.input_sample)
 
 
 if __name__ == '__main__':

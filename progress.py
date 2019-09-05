@@ -4,6 +4,7 @@ progress.py :: Monitor result, handle tensorboard, save best models.
 from collections import defaultdict
 import time
 import tensorflow as tf
+import os
 
 def add_progress_args(parser):
     group = parser.add_argument_group('progress')
@@ -22,7 +23,8 @@ def get_valid_progress_handler(args):
 class TensorboardTracker(object):
     def __init__(self, log_interval=100):
         self._graph_fixed = False
-        self.log_dir_path = './.tfLog'
+        self.log_dir_path = f'./.tfLog/{time.time()}'
+        os.makedirs(self.log_dir_path)
         self.log_interval = log_interval
 
     def track(self, name, value):
@@ -42,29 +44,33 @@ class TensorboardTracker(object):
 
     def create_summary(self, global_step, feed_dict={}):
         if global_step % self.log_interval == 0:
-            print(f'Creating summary {global_step}')
             summary = self.sess.run(self.summary_op, feed_dict=feed_dict)
             self.writer.add_summary(summary, global_step=global_step)
 
 class ProgressHandler(object):
+    RESERVED_KWD = ['input_sample']
     def __init__(self, log_interval=100):
         self.log_interval = log_interval
         self.global_step = 0
         self.reset_progress()
+        self.step = 0
+        self.input_sample = []
 
     def reset_progress(self):
-        self.step = 0
         self.logged_stats = defaultdict(list)
         self.start_time = time.time()
 
     def log(self, stats):
         for k, v in stats.items():
-            if isinstance(v, list):
-                self.logged_stats[k] += v
+            if k == 'input_sample':
+                self.input_sample = v
             else:
-                self.logged_stats[k].append(v)
-            self.step += 1
-            self.global_step += 1
+                if isinstance(v, list):
+                    self.logged_stats[k] += v
+                else:
+                    self.logged_stats[k].append(v)
+        self.step += 1
+        self.global_step += 1
 
         if self.step % self.log_interval == 0 and self.log_interval > 0:
             self.emit()
@@ -75,10 +81,13 @@ class ProgressHandler(object):
     def emit(self):
         self.reset_progress()
 
+    def flush(self):
+        self.step = 0
+
 
 class NormalProgressHandler(ProgressHandler):
     def emit(self):
-        result_str = f'Elapsed time {"%.3f"%self.elapsed_time()}|'
+        result_str = f'At step {self.step} | Elapsed time {"%.3f"%self.elapsed_time()}|'
         for k, v in self.logged_stats.items():
             value = '%.3f' % (sum(v) / len(v))
             result_str += f'{k} : {value}|'
