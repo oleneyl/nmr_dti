@@ -22,3 +22,4 @@ def add_training_args(parser):
 
     group.add_argument('--lr', type=float, default=0.001)
     group.add_argument('--epoch', type=int, default=1)
+    group.add_argument('--grad_clip', type=float, default=1.0)
