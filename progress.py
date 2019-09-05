@@ -3,6 +3,7 @@ progress.py :: Monitor result, handle tensorboard, save best models.
 """
 from collections import defaultdict
 import time
+import tensorflow as tf
 
 def add_progress_args(parser):
     group = parser.add_argument_group('progress')
@@ -17,6 +18,33 @@ def get_progress_handler(args):
 def get_valid_progress_handler(args):
     return NormalProgressHandler(log_interval = -1)
 
+
+class TensorboardTracker(object):
+    def __init__(self, log_interval=100):
+        self._graph_fixed = False
+        self.log_dir_path = './.tfLog'
+        self.log_interval = log_interval
+
+    def track(self, name, value):
+        if self._graph_fixed:
+            raise ValueError('Tracking additional variable after fixing summary is not available.')
+        tf.summary.scalar(name, value)
+
+    def hist(self, name, value):
+        tf.summary.histogram(name, value)
+
+    def fix_summary(self, sess):
+        self.summary_op = tf.summary.merge_all()
+        self._graph_fixed = True
+        self.writer = tf.summary.FileWriter(self.log_dir_path)
+        self.writer.add_graph(sess.graph)
+        self.sess = sess
+
+    def create_summary(self, global_step, feed_dict={}):
+        if global_step % self.log_interval == 0:
+            print(f'Creating summary {global_step}')
+            summary = self.sess.run(self.summary_op, feed_dict=feed_dict)
+            self.writer.add_summary(summary, global_step=global_step)
 
 class ProgressHandler(object):
     def __init__(self, log_interval=100):
