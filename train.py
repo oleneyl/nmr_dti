@@ -6,6 +6,7 @@ from options import get_args
 from models import get_model
 from progress import get_progress_handler, get_valid_progress_handler, TensorboardTracker
 from preprocess.data_utils.data_loader import get_data_loader
+from pprint import pprint
 
 
 def get_optimizer(args, logits, labels, global_step):
@@ -24,7 +25,12 @@ def get_optimizer(args, logits, labels, global_step):
 
 
 def train(args):
-    print(args)
+    print("Run environment")
+    pprint(args)
+
+    # Device setting
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_number)
+
     # Define Placeholders
     protein_input = tf.placeholder(shape=[None, args.protein_sequence_length], dtype=tf.int32, name='protein_input')
     nmr_input = tf.placeholder(shape=[None, args.nmr_array_size], dtype=tf.float32, name='nmr_input')
@@ -117,5 +123,4 @@ def train(args):
 
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "3"
     train(get_args())
