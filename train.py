@@ -49,16 +49,16 @@ def train(args):
 
     initializer = tf.initializers.global_variables()
 
-    progress_handler = get_progress_handler(args)
+    progress_handler, summary_handler = get_progress_handler(args)
     validation_handler = get_valid_progress_handler(args)
 
     # Tensorboard tracking
-    summary_handler = TensorboardTracker(args.log_interval)
     for variable in tf.trainable_variables():
         summary_handler.hist(variable.name, variable)
     summary_handler.track('loss', loss_op)
     summary_handler.create_summary(global_step)
 
+    # Create session
     sess = tf.Session()
     sess.run(initializer)
     summary_handler.fix_summary(sess)

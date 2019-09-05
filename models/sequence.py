@@ -20,11 +20,12 @@ def transformer_args(parser):
 class RNNProteinModel(BaseModel):
     def __init__(self, args, input_tensor, vocab_size, is_train=True):
         super(RNNProteinModel, self).__init__(args)
-        embedding = tf.keras.layers.Embedding(vocab_size, args.transformer_model_dim)
+        embedding = tf.keras.layers.Embedding(vocab_size, args.transformer_model_dim)(input_tensor)
+        embedding = tf.keras.layers.Dropout(rate=args.concat_dropout)(embedding, training=is_train)
         rnn_cell = tf.keras.layers.GRUCell(args.sequential_hidden_size, dropout=args.sequential_dropout)
         recurrent = tf.keras.layers.RNN(rnn_cell)
         bidirectional_recurrent = tf.keras.layers.Bidirectional(recurrent)
-        output = bidirectional_recurrent(embedding(input_tensor), training=is_train)
+        output = bidirectional_recurrent(embedding, training=is_train)
         output = tf.keras.layers.Dense(args.sequential_dense)(output)
         self.output = output
 
@@ -46,4 +47,4 @@ class AttentionProteinModel(BaseModel):
         output = tf.keras.layers.Dropout(rate=args.transformer_dropout_rate)(output, training=is_train)
         output = tf.squeeze(output, axis=-1)
         '''
-        self.output = tf.keras.layers.Dense(args.sequential_dense)(output)
+        self.output = tf.keras.layers.Dense(args.sequential_dense, activation='relu')(output)

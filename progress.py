@@ -12,7 +12,7 @@ def add_progress_args(parser):
 
 
 def get_progress_handler(args):
-    return NormalProgressHandler(args.log_interval)
+    return NormalProgressHandler(args.log_interval), TensorboardTracker(log_interval=args.log_interval)
 
 
 def get_valid_progress_handler(args):
