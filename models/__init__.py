@@ -71,7 +71,7 @@ class InitialDTIModel(BaseDTIModel):
                                           name='concat_dense_1')(embedding)
         embedding = tf.keras.layers.BatchNormalization()(embedding, training=self.is_train)
         embedding = tf.keras.layers.Dropout(self.args.concat_dropout)(embedding, training=self.is_train)
-        dense_last = tf.keras.layers.Dense(1, name='concat_dense_last')
+        dense_last = tf.keras.layers.Dense(1, activation='sigmoid', name='concat_dense_last')
         embedding = dense_last(embedding)
         return embedding
 
@@ -97,7 +97,7 @@ class SiameseDTIModel(BaseDTIModel):
         nmr_siamese = tf.keras.layers.Dropout(self.args.concat_dropout)(nmr_siamese, training=self.is_train)
         nmr_siamese = tf.keras.layers.BatchNormalization()(nmr_siamese, training=self.is_train)
         nmr_siamese = tf.keras.layers.Dense(self.args.siamese_layer_size)(nmr_siamese)
-        return tf.reduce_sum(tf.multiply(protein_siamese, nmr_siamese), axis=1, keep_dims=True)
+        return tf.sigmoid(tf.reduce_sum(tf.multiply(protein_siamese, nmr_siamese), axis=1, keep_dims=True))
 
 
 def build_model(args, protein_encoded, nmr_array, smiles_encoded, is_train=True):
