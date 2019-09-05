@@ -22,9 +22,11 @@ class RNNProteinModel(BaseModel):
         super(RNNProteinModel, self).__init__(args)
         embedding = tf.keras.layers.Embedding(vocab_size, args.transformer_model_dim)(input_tensor)
         embedding = tf.keras.layers.Dropout(rate=args.concat_dropout)(embedding, training=is_train)
+
         rnn_cell = tf.keras.layers.GRUCell(args.sequential_hidden_size, dropout=args.sequential_dropout)
         recurrent = tf.keras.layers.RNN(rnn_cell)
         bidirectional_recurrent = tf.keras.layers.Bidirectional(recurrent)
+
         output = bidirectional_recurrent(embedding, training=is_train)
         output = tf.keras.layers.Dense(args.sequential_dense)(output)
         self.output = output

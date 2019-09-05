@@ -26,6 +26,7 @@ def add_model_args(parser):
     # Concat-model control
     group.add_argument('--concat_model', type=str, default='siamese')
     group.add_argument('--concat_hidden_layer_size', type=int, default=20)
+    group.add_argument('--siamese_layer_size', type=int, default=32)
     group.add_argument('--concat_dropout', type=float, default=0.5)
 
 
@@ -89,11 +90,13 @@ class SiameseDTIModel(BaseDTIModel):
                                                 name='siamese_protein')(self.protein_model.get_output())
         protein_siamese = tf.keras.layers.Dropout(self.args.concat_dropout)(protein_siamese, training=self.is_train)
         protein_siamese = tf.keras.layers.BatchNormalization()(protein_siamese, training=self.is_train)
+        protein_siamese = tf.keras.layers.Dense(self.args.siamese_layer_size)(protein_siamese)
 
         nmr_siamese = tf.keras.layers.Dense(self.args.concat_hidden_layer_size, activation='relu',
                                             name='siamese_protein')(self.nmr_model.get_output())
         nmr_siamese = tf.keras.layers.Dropout(self.args.concat_dropout)(nmr_siamese, training=self.is_train)
         nmr_siamese = tf.keras.layers.BatchNormalization()(nmr_siamese, training=self.is_train)
+        nmr_siamese = tf.keras.layers.Dense(self.args.siamese_layer_size)(nmr_siamese)
         return tf.reduce_sum(tf.multiply(protein_siamese, nmr_siamese), axis=1, keep_dims=True)
 
 
