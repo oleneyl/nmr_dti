@@ -40,15 +40,18 @@ class BaseDTIModel(object):
         self.nmr_model = NMRModel(args, nmr_array, is_train=is_train)
         self.protein_model = None
         self.chemical_model = None
-        if args.protein_model == 'gru':
-            self.protein_model = RNNProteinModel(args, protein_encoded, args.protein_vocab_size, is_train=is_train)
-        elif args.protein_model == 'att':
-            self.protein_model = AttentionProteinModel(args, protein_encoded, args.protein_vocab_size,is_train=is_train)
-        if args.chemical_model == 'gru':
-            self.chemical_model = RNNProteinModel(args, smiles_encoded, args.chemical_vocab_size, is_train=is_train)
-        elif args.chemical_model == 'att':
-            self.chemical_model = AttentionProteinModel(args, smiles_encoded, args.chemical_vocab_size, is_train=is_train)
-        self.output = self.predict_dti()
+        with tf.name_scope('protein'):
+            if args.protein_model == 'gru':
+                self.protein_model = RNNProteinModel(args, protein_encoded, args.protein_vocab_size, is_train=is_train)
+            elif args.protein_model == 'att':
+                self.protein_model = AttentionProteinModel(args, protein_encoded, args.protein_vocab_size,is_train=is_train)
+        with tf.name_scope('chemical'):
+            if args.chemical_model == 'gru':
+                self.chemical_model = RNNProteinModel(args, smiles_encoded, args.chemical_vocab_size, is_train=is_train)
+            elif args.chemical_model == 'att':
+                self.chemical_model = AttentionProteinModel(args, smiles_encoded, args.chemical_vocab_size, is_train=is_train)
+        with tf.name_scope('last'):
+            self.output = self.predict_dti()
 
     def unsupervised_protein(self):
         pass
@@ -69,19 +72,11 @@ class InitialDTIModel(BaseDTIModel):
                                self.chemical_model.get_output()], 1)
         embedding = tf.keras.layers.Dense(self.args.concat_hidden_layer_size, activation='relu',
                                           name='concat_dense_1')(embedding)
-        embedding = tf.keras.layers.BatchNormalization()(embedding, training=self.is_train)
         embedding = tf.keras.layers.Dropout(self.args.concat_dropout)(embedding, training=self.is_train)
+        embedding = tf.keras.layers.BatchNormalization()(embedding, training=self.is_train)
         dense_last = tf.keras.layers.Dense(1, activation='sigmoid', name='concat_dense_last')
         embedding = dense_last(embedding)
         return embedding
-
-
-class AttentionDTIModel(InitialDTIModel):
-    def unsupervised_chemical(self, masked_input):
-        output = self.chemical_model.encoder(masked_input, self.is_train, None)
-        output
-        # Define BERT task with given masked input!
-        pass
 
 
 class SiameseDTIModel(BaseDTIModel):
