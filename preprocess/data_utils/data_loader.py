@@ -12,7 +12,7 @@ def data_loader_args(parser):
     group.add_argument('--nmr_dir', type=str)
     group.add_argument('--batch_size', type=int)
     group.add_argument('--protein_sequence_length', type=int, default=256)
-    group.add_argument('--chemical_sequence_length', type=int, default=256)
+    group.add_argument('--chemical_sequence_length', type=int, default=128)
 
 
 def get_data_loader(args):

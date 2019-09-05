@@ -4,7 +4,7 @@ computer - recongizable numpy objects.
 """
 
 import numpy as np
-import sentencepiece as spm
+from .vocab import SentencePieceVocab, DummyVocab, SimpleSMILESVocab
 
 
 def adapter_args(parser):
@@ -18,44 +18,14 @@ def adapter_args(parser):
     group.add_argument('--protein_vocab_size', type=int, default=1000)
     group.add_argument('--chemical_vocab_size', type=int, default=1000)
 
+
 def get_adapter(args):
     protein_vocab = SentencePieceVocab(args.protein_vocab)
     # chemical_vocab = SentencePieceVocab(args.chemical_vocab)
-    chemical_vocab = DummyVocab()
+    chemical_vocab = SentencePieceVocab(args.chemical_vocab)
 
     return NMRAdapter(protein_vocab, chemical_vocab, nmr_array_size=args.nmr_array_size,
                       min_ppm=args.min_ppm, max_ppm=args.max_ppm)
-
-
-class Vocab(object):
-    """Vocab converts given sequence into list - of - index
-    """
-    def __init__(self):
-        pass
-
-    def __call__(self, sequence):
-        return self.encode(sequence)
-
-    def encode(self, sequence):
-        raise NotImplementedError
-
-    def decode(self, indices_array):
-        raise NotImplementedError
-
-class DummyVocab(Vocab):
-    def encode(self, sequence):
-        return [0]
-
-class SentencePieceVocab(Vocab):
-    def __init__(self, vocab_file):
-        self.sp = spm.SentencePieceProcessor()
-        self.sp.Load(vocab_file)
-
-    def encode(self, sequence):
-        return self.sp.encode_as_ids(sequence)
-
-    def decode(self, indices_array):
-        return self.sp.decode_ids(indices_array)
 
 
 class NMRAdapter():
@@ -72,7 +42,6 @@ class NMRAdapter():
     def normalize_nmr(cls, nmr_data, nmr_min, nmr_max, min_ppm, max_ppm, size):
         """Fit given data into min_ppm ~ max_ppm with given size.
         """
-        from pprint import pprint
 
         nmr_data = np.array(nmr_data)
         nmr_data = nmr_data / np.max(nmr_data)
@@ -81,10 +50,13 @@ class NMRAdapter():
         return np.interp(target_point, current_point, nmr_data, 0.0, 0.0)
 
     def adapt(self, datum):
-        protein_indices = self.protein_vocab(datum['sequence'])
-        chemical_indices = self.chemical_vocab([])  #Not using yet
-        nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
+        protein_indices = self.protein_vocab(datum.get('sequence', [0]))
+        chemical_indices = self.chemical_vocab(datum.get('smiles', [0]))
+        if 'nmr_freq' in datum:
+            nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
                                         self.min_ppm, self.max_ppm, self.nmr_array_size)
+        else:
+            nmr_values = np.zeros([self.nmr_array_size])
 
         return float(int(datum['bind'])), protein_indices, chemical_indices, nmr_values
 
