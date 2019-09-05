@@ -4,11 +4,14 @@ from .trainable import join_hmdb_and_uniprot, create_negatives, mix_nmr_into_hmd
 from .trainable import strict_splitting, create_dataset
 from .kernel import get_conf, change_configuration
 from .data_reader import JSONDataReader
+from .ibm_dataset import get_ibm_data_reader
+
+from .data_conf import add_data_config
 import random
 import os
 
 
-def mix_nmr(output_file_name, wrapper = None):
+def mix_nmr(output_file_name, wrapper=None):
     conf = get_conf()
     mix_nmr_into_hmdb(conf['hmdb']['export_endpoint'], conf['nmr']['engine_dir'], output_file_name,
                       wrapper=wrapper)
@@ -43,6 +46,12 @@ def create_trainable_data(split_ratio, wrapper=None, use_nmr=False):
     JSONDataReader.save_from_raw(valid, conf['trainable']['valid'])
 
 
+def mix_positive_and_negative(pos, neg):
+    li = pos + neg
+    random.shuffle(li)
+    return li
+
+
 def strict_split_data(split_ratio, save_dir, wrapper=None, use_nmr=False):
     os.makedirs(save_dir, exist_ok=True)
     conf = get_conf()
@@ -54,13 +63,24 @@ def strict_split_data(split_ratio, save_dir, wrapper=None, use_nmr=False):
     train_tuple, valid_tuple = strict_splitting(hmdb_data, uniprot_data, split_ratio=split_ratio, wrapper=wrapper)
     print('Strict splitting done!')
     print(f'Train chemicals {len(train_tuple[0])}, Validation chemicals {len(valid_tuple[0])}')
-    train_set = create_dataset(*train_tuple, negative_ratio=0.5, wrapper=wrapper)
-    valid_set = create_dataset(*valid_tuple, negative_ratio=0.5, wrapper=wrapper)
-    train_set = train_set[0] + train_set[1]
-    valid_set = valid_set[0] + valid_set[1]
-    random.shuffle(train_set)
-    random.shuffle(valid_set)
+    train_set = mix_positive_and_negative(*create_dataset(*train_tuple, negative_ratio=1, wrapper=wrapper))
+    valid_set = mix_positive_and_negative(*create_dataset(*valid_tuple, negative_ratio=1, wrapper=wrapper))
     print(f'Training set {len(train_set)}, Validation set {len(valid_set)}')
 
     JSONDataReader.save_from_raw(train_set, os.path.join(save_dir, 'train'))
     JSONDataReader.save_from_raw(valid_set, os.path.join(save_dir, 'valid'))
+
+
+def create_dataset_from_ibm(save_dir, wrapper=None):
+    # This action do not includes any NMR data inside dataset..
+    # This dataset will only for reproduction / baseline check
+    os.makedirs(save_dir, exist_ok=True)
+    train_reader, valid_reader = get_ibm_data_reader()
+    train_set = mix_positive_and_negative(*train_reader.create_dataset())
+    valid_set = mix_positive_and_negative(*valid_reader.create_dataset())
+
+    JSONDataReader.save_from_raw(train_set, os.path.join(save_dir, 'train'))
+    JSONDataReader.save_from_raw(valid_set, os.path.join(save_dir, 'valid'))
+
+    add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
+                    data_read_type='line_json', origin='IBM', includes_nmr=False)

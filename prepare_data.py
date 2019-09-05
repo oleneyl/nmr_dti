@@ -2,6 +2,7 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 
 from preprocess import create_every_alignment, create_trainable_data, change_configuration, mix_nmr, strict_split_data
+from preprocess import create_dataset_from_ibm
 from preprocess.tokenize import create_protein_vocab
 
 
@@ -31,3 +32,5 @@ if __name__=='__main__':
         create_protein_vocab(args.output_prefix)
     elif args.task == 'mix_nmr':
         mix_nmr(args.output_prefix + '.mix_nmr', wrapper=tqdm)
+    elif args.task == 'create_from_ibm':
+        create_dataset_from_ibm(args.output_prefix)
