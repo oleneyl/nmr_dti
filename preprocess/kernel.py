@@ -62,7 +62,7 @@ class XMLManager(object):
         output = []
         for el in self.iter_xml(wrapper=wrapper):
             parsed_element = self.element_parser(el)
-            output.append({k:parsed_element[k] for k in objectives})
+            output.append({k: parsed_element[k] for k in objectives})
 
         print(f'Total input {len(output)} detected')
         with open(fname, 'w') as f:

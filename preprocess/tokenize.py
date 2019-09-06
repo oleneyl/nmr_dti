@@ -15,6 +15,7 @@ def create_protein_vocab(output_prefix):
 
     spm.SentencePieceTrainer.Train(f'--input={TEMP_FILE_NAME} --model_prefix={output_prefix} --vocab_size=1000')
 
+
 def create_chemical_vocab(output_prefix):
     sequences = []
     #Create chemical vocabulary
