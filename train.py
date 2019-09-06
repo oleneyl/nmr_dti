@@ -6,16 +6,17 @@ from options import get_args
 from models import get_model
 from progress import get_progress_handler, get_valid_progress_handler, TensorboardTracker
 from preprocess.data_utils.data_loader import get_data_loader
+from learning_rate import get_learning_rate_scheduler
 from pprint import pprint
 
 
-def get_optimizer(args, logits, labels, global_step):
+def get_optimizer(args, logits, labels, global_step, learning_rate):
     loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
 
     # Batch normalization
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
     with tf.control_dependencies(update_ops):
-        optimizer = tf.train.AdamOptimizer(learning_rate=args.lr)
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
         grads = optimizer.compute_gradients(loss)
         clipped_grads = [(tf.clip_by_value(grad, -1 * args.grad_clip,  args.grad_clip), var) for grad, var in grads
                          if grad is not None]
@@ -41,7 +42,8 @@ def train(args):
     # Create graph
     is_train = tf.placeholder(shape=[], dtype=tf.bool, name='trainable')
     binary_result, model = get_model(args, protein_input, nmr_input, smile_input, is_train=is_train)
-    loss_op, optimize_op = get_optimizer(args, binary_result, result_pl, global_step)
+    learning_rate = get_learning_rate_scheduler(args)(global_step)
+    loss_op, optimize_op = get_optimizer(args, binary_result, result_pl, global_step, learning_rate)
 
     var_sizes = [np.product(list(map(int, v.shape))) * v.dtype.size
                  for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)]
@@ -58,6 +60,7 @@ def train(args):
 
     summary_handler.hist('prediction', binary_result)
     summary_handler.track('loss', loss_op)
+    summary_handler.track('learning_rate', learning_rate)
     summary_handler.create_summary(global_step)
 
     # Create session
@@ -89,7 +92,7 @@ def train(args):
             progress.log({
                 'loss': loss,
                 'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, output)],
-                'input_sample': [x[0] for x in (result, protein, smile, nmr, output)]
+                'input_sample': [x[0] for x in (result, protein, smile, nmr, output)],
             })
             if summary:
                 summary.create_summary(sess.run(global_step), feed_dict={
