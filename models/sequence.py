@@ -42,6 +42,7 @@ class AttentionProteinModel(BaseModel):
                                rate=args.transformer_dropout_rate)
 
         output = self.encoder(input_tensor, is_train, None)
+        self.encoding = output
         output = tf.keras.layers.Flatten()(output)
         '''
         output = tf.keras.layers.Dense(1, activation='relu')(output)

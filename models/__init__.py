@@ -1,7 +1,7 @@
 import tensorflow as tf
 from .cnn import NMRModel
 from .sequence import RNNProteinModel, AttentionProteinModel, transformer_args
-
+from .attention import MultiHeadAttention
 
 def add_model_args(parser):
     transformer_args(parser)
@@ -95,12 +95,53 @@ class SiameseDTIModel(BaseDTIModel):
         return tf.sigmoid(tf.reduce_sum(tf.multiply(protein_siamese, nmr_siamese), axis=1, keep_dims=True))
 
 
+class AttentiveDTIModel(BaseDTIModel):
+    def predict_dti(self):
+        protein_encoding = self.protein_model.encoding
+        chemical_encoding = self.chemical_model.encoding
+
+        output = tf.keras.layers.Attention(use_scale=True)([protein_encoding, chemical_encoding])
+        output = tf.keras.layers.Flatten()(output)
+        embedding = tf.keras.layers.Dense(self.args.concat_hidden_layer_size, activation='relu',
+                                          name='concat_dense_1')(output)
+        embedding = tf.keras.layers.Dropout(self.args.concat_dropout)(embedding, training=self.is_train)
+        embedding = tf.keras.layers.BatchNormalization()(embedding, training=self.is_train)
+        dense_last = tf.keras.layers.Dense(1, activation='sigmoid', name='concat_dense_last')
+        embedding = dense_last(embedding)
+        return embedding
+
+
+class MHADTIModel(BaseDTIModel):
+    def predict_dti(self):
+        protein_encoding = self.protein_model.encoding
+        chemical_encoding = self.chemical_model.encoding
+        print(protein_encoding, chemical_encoding)
+        multi_head_attention, _ = MultiHeadAttention(self.args.transformer_model_dim, self.args.transformer_num_heads)(
+            chemical_encoding,
+            protein_encoding,
+            protein_encoding,
+            None
+        )
+        print(multi_head_attention)
+        output = tf.keras.layers.Flatten()(multi_head_attention)
+        embedding = tf.keras.layers.Dense(self.args.concat_hidden_layer_size, activation='relu',
+                                          name='concat_dense_1')(output)
+        embedding = tf.keras.layers.Dropout(self.args.concat_dropout)(embedding, training=self.is_train)
+        embedding = tf.keras.layers.BatchNormalization()(embedding, training=self.is_train)
+        dense_last = tf.keras.layers.Dense(1, activation='sigmoid', name='concat_dense_last')
+        embedding = dense_last(embedding)
+        return embedding
+
+
 def build_model(args, protein_encoded, nmr_array, smiles_encoded, is_train=True):
     """
     Create output generation model from given placeholders
     """
     if args.concat_model == 'siamese':
         model = SiameseDTIModel(args, protein_encoded, nmr_array, smiles_encoded, is_train=is_train)
+        return model.output, model
+    elif args.concat_model == 'attentive':
+        model = AttentiveDTIModel(args, protein_encoded, nmr_array, smiles_encoded, is_train=is_train)
         return model.output, model
     else:
         model = InitialDTIModel(args, protein_encoded, nmr_array, smiles_encoded, is_train=is_train)
