@@ -4,7 +4,9 @@ progress.py :: Monitor result, handle tensorboard, save best models.
 from collections import defaultdict
 import time
 import tensorflow as tf
+import sklearn.metrics
 import os
+
 
 def add_progress_args(parser):
     group = parser.add_argument_group('progress')
@@ -86,11 +88,23 @@ class ProgressHandler(object):
 
 
 class NormalProgressHandler(ProgressHandler):
-    def emit(self):
+    def emit(self, show_examples=False):
         result_str = f'At step {self.step} | Elapsed time {"%.3f"%self.elapsed_time()}|'
         for k, v in self.logged_stats.items():
-            value = '%.3f' % (sum(v) / len(v))
-            result_str += f'{k} : {value}|'
+            if k[0:2] != '__':
+                value = '%.3f' % (sum(v) / len(v))
+                result_str += f'{k} : {value}|'
 
+        # Calculate some..good thing.. ROC curve
+        auc = sklearn.metrics.roc_auc_score(self.logged_stats['__label'], self.logged_stats['__pred'])
+        result_str += f'auc : %.3f|' % auc
         print(result_str)
+
+        # Show examples
+        if show_examples:
+            print('-- show examples --')
+            print('Labels :', ['%.3f' % int(x) for x in self.logged_stats['__label'][:10]])
+            print('Preds  :', ['%.3f' % x for x in self.logged_stats['__pred'][:10]])
+            print('Accu   :', [self.logged_stats['acc'][:10]])
+
         super(NormalProgressHandler, self).emit()
