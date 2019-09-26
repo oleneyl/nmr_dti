@@ -9,7 +9,7 @@ def create_hmdb_alignment(wrapper = None):
 
 class HMDBXMLManager(XMLManager):
     def __init__(self, filename):
-        super(HMDBXMLManager, self).__init__(filename, ['cas_registry_number', 'hmdb_id', 'inchikey', 'protein_associations','smiles'], '{http://www.hmdb.ca}metabolite')
+        super(HMDBXMLManager, self).__init__(filename, ['cas_registry_number', 'hmdb_id', 'inchikey', 'protein_associations','smiles',"pubchem_id"], '{http://www.hmdb.ca}metabolite')
 
     def iter_xml(self, wrapper=lambda x: x):
         for el in super(HMDBXMLManager, self).iter_xml(wrapper=wrapper):
@@ -22,6 +22,7 @@ class HMDBXMLManager(XMLManager):
             'inchikey': el.find('{http://www.hmdb.ca}inchikey').text,
             'protein_associations': [x.find('{http://www.hmdb.ca}uniprot_id').text for x in
                                      el.find('{http://www.hmdb.ca}protein_associations').getchildren()],
-            'smiles': el.find('{http://www.hmdb.ca}smiles').text
+            'smiles': el.find('{http://www.hmdb.ca}smiles').text,
+            'pubchem_id': el.find('{http://www.hmdb.ca}pubchem_compound_id').text
         }
         return packet
