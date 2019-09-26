@@ -9,10 +9,11 @@ def data_loader_args(parser):
     group = parser.add_argument_group('data_loader')
     group.add_argument('--train_file_name', type=str, default=base_conf['trainable']['train'])
     group.add_argument('--valid_file_name', type=str, default=base_conf['trainable']['valid'])
+    group.add_argument('--test_file_name', type=str, default='')
     group.add_argument('--nmr_dir', type=str)
     group.add_argument('--batch_size', type=int)
     group.add_argument('--protein_sequence_length', type=int, default=256)
-    group.add_argument('--chemical_sequence_length', type=int, default=128)
+    group.add_argument('--chemical_sequence_length', type=int, default=256)
 
 
 def get_data_loader(args):
@@ -28,7 +29,13 @@ def get_data_loader(args):
                                           chemical_sequence_length=args.chemical_sequence_length,
                                           adapter=get_adapter(args))
 
-    return train_data_loader, valid_data_loader
+    test_data_loader = GeneralDataLoader(args.test_file_name, args.nmr_dir,
+                                         batch_size=args.batch_size,
+                                         protein_sequence_length=args.protein_sequence_length,
+                                         chemical_sequence_length=args.chemical_sequence_length,
+                                         adapter=get_adapter(args))
+
+    return train_data_loader, valid_data_loader, test_data_loader
 
 
 class GeneralDataLoader(object):
