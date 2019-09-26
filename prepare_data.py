@@ -15,6 +15,8 @@ def get_args():
     parser.add_argument('--output_prefix', type=str)
     parser.add_argument('--split_ratio', type=float, default=0.95)
     parser.add_argument('--nmr', action='store_true')
+
+    parser.add_argument('--as_binary', help='Degenerate float output into binary output', action='store_true')
     return parser.parse_args()
 
 
@@ -38,7 +40,7 @@ if __name__=='__main__':
     elif args.task == 'create_from_ibm':
         create_dataset_from_ibm(args.output_prefix)
     elif args.task == 'create_from_kiba':
-        create_dataset_from_kiba(args.output_prefix)
+        create_dataset_from_kiba(args.output_prefix, as_binary=args.as_binary)
     elif args.task == 'get_pubchem':
         print('\n Start fetching pubchem data \n')
         collect_many(10000*10000+1, 30000*10000, task_pool_size=6)

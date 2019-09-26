@@ -7,8 +7,8 @@ import numpy as np
 KIBA_DATASET_PATH = '/DATA/meson324/DeepDTA/kiba'
 
 
-def get_kiba_dataset(dir_path=KIBA_DATASET_PATH):
-    train, test = kiba_from_deep_dta(dir_path)
+def get_kiba_dataset(dir_path=KIBA_DATASET_PATH, as_binary=False):
+    train, test = kiba_from_deep_dta(dir_path, as_binary=as_binary)
     # Train - valid split
     valid = train[0]
     train = sum(train[1:], [])
@@ -17,9 +17,10 @@ def get_kiba_dataset(dir_path=KIBA_DATASET_PATH):
 
 
 
-def kiba_from_deep_dta(dir_path):
+def kiba_from_deep_dta(dir_path, as_binary=False):
     PROTEIN_FILE_NAME = 'proteins.txt'
     LIGAND_FILE_NAME = 'ligands_can.txt'
+    BINARY_CRITERION = 12.1  # https://arxiv.org/pdf/1908.06760.pdf page 10
 
     with open(os.path.join(dir_path, PROTEIN_FILE_NAME)) as f:
         proteins = json.load(f, object_pairs_hook=OrderedDict)
@@ -49,6 +50,9 @@ def kiba_from_deep_dta(dir_path):
             protein_seq = proteins[protein_id]
             ligand_seq = ligands[ligand_id]
             bind = matrix[r][c]
+
+            if as_binary:
+                bind = True if (bind > BINARY_CRITERION) else False
 
             dataset.append({
                 'chembl_id': ligand_id,
