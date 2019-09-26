@@ -5,6 +5,7 @@ from .trainable import strict_splitting, create_dataset
 from .kernel import get_conf, change_configuration
 from .data_reader import JSONDataReader
 from .ibm_dataset import get_ibm_data_reader
+from .kiba import get_kiba_dataset
 
 from .data_conf import add_data_config
 import random
@@ -75,12 +76,26 @@ def create_dataset_from_ibm(save_dir, wrapper=None):
     # This action do not includes any NMR data inside dataset..
     # This dataset will only for reproduction / baseline check
     os.makedirs(save_dir, exist_ok=True)
-    train_reader, valid_reader = get_ibm_data_reader()
+    train_reader, valid_reader, test_reader = get_ibm_data_reader()
     train_set = mix_positive_and_negative(*train_reader.create_dataset())
     valid_set = mix_positive_and_negative(*valid_reader.create_dataset())
+    test_set = mix_positive_and_negative(*test_reader.create_dataset())
 
     JSONDataReader.save_from_raw(train_set, os.path.join(save_dir, 'train'))
     JSONDataReader.save_from_raw(valid_set, os.path.join(save_dir, 'valid'))
+    JSONDataReader.save_from_raw(test_set, os.path.join(save_dir, 'test'))
 
     add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
-                    data_read_type='line_json', origin='IBM', includes_nmr=False)
+                    data_read_type='line_json', origin='IBM', includes_nmr=False, test_set_name='test')
+
+
+def create_dataset_from_kiba(save_dir, wrapper=None):
+    train, valid, test = get_kiba_dataset()
+    # No negative data mixing needed
+    os.makedirs(save_dir, exist_ok=True)
+    JSONDataReader.save_from_raw(train, os.path.join(save_dir, 'train'))
+    JSONDataReader.save_from_raw(valid, os.path.join(save_dir, 'valid'))
+    JSONDataReader.save_from_raw(test, os.path.join(save_dir, 'test'))
+
+    add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
+                    data_read_type='line_json', origin='kiba', includes_nmr=False, test_set_name='test')

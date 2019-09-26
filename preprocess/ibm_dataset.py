@@ -9,7 +9,9 @@ IBM_DATASET_PATH = '/DATA/meson324/InterpretableDTIP/data'
 
 
 def get_ibm_data_reader():
-    return IBMDataReader(os.path.join(IBM_DATASET_PATH, 'train')), IBMDataReader(os.path.join(IBM_DATASET_PATH, 'dev'))
+    return (IBMDataReader(os.path.join(IBM_DATASET_PATH, 'train')),
+            IBMDataReader(os.path.join(IBM_DATASET_PATH, 'dev')),
+            IBMDataReader(os.path.join(IBM_DATASET_PATH, 'test')))
 
 
 class IBMDataReader(object):
