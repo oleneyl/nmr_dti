@@ -18,7 +18,7 @@ def get_optimizer(args, logits, labels, global_step, learning_rate):
     with tf.control_dependencies(update_ops):
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
         grads = optimizer.compute_gradients(loss)
-        clipped_grads = [(tf.clip_by_value(grad, -1 * args.grad_clip,  args.grad_clip), var) for grad, var in grads
+        clipped_grads = [(tf.clip_by_value(grad, -1 * args.grad_clip, args.grad_clip), var) for grad, var in grads
                          if grad is not None]
         optim_op = optimizer.apply_gradients(clipped_grads, global_step=global_step)
 
@@ -45,6 +45,8 @@ def train(args):
     learning_rate = get_learning_rate_scheduler(args)(global_step)
     loss_op, optimize_op = get_optimizer(args, binary_result, result_pl, global_step, learning_rate)
 
+    predictions_op = tf.squeeze(tf.sigmoid(binary_result))
+
     var_sizes = [np.product(list(map(int, v.shape))) * v.dtype.size
                  for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)]
     print('Variable size', sum(var_sizes) / (1024 ** 2), 'MB')
@@ -53,6 +55,7 @@ def train(args):
 
     progress_handler, summary_handler = get_progress_handler(args)
     validation_handler = get_valid_progress_handler(args)
+    test_handler = get_valid_progress_handler(args)
 
     # Tensorboard tracking
     for variable in tf.trainable_variables():
@@ -74,25 +77,28 @@ def train(args):
         _is_train = (training_mode == 'train')
         for idx, (result, protein, smile, nmr) in enumerate(data_loader):
             if _is_train:
-                output, loss, _ = sess.run([binary_result, loss_op, optimize_op], feed_dict={
-                    protein_input: protein,
-                    nmr_input: nmr,
-                    smile_input: smile,
-                    result_pl: result,
-                    is_train: True
-                })
+                output, loss, pred, _ = sess.run(
+                    [binary_result, loss_op, predictions_op, optimize_op], feed_dict={
+                        protein_input: protein,
+                        nmr_input: nmr,
+                        smile_input: smile,
+                        result_pl: result,
+                        is_train: True
+                    })
             else:
-                output, loss = sess.run([binary_result, loss_op], feed_dict={
-                    protein_input: protein,
-                    nmr_input: nmr,
-                    smile_input: smile,
-                    result_pl: result,
-                    is_train: False
-                })
+                output, loss, pred = sess.run(
+                    [binary_result, loss_op, predictions_op], feed_dict={
+                        protein_input: protein,
+                        nmr_input: nmr,
+                        smile_input: smile,
+                        result_pl: result,
+                        is_train: False
+                    })
             progress.log({
                 'loss': loss,
-                'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, output)],
-                'input_sample': [x[0] for x in (result, protein, smile, nmr, output)],
+                'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, pred)],
+                '__pred': pred.tolist(),
+                '__label': [x[0] for x in result],
             })
             if summary:
                 summary.create_summary(sess.run(global_step), feed_dict={
@@ -112,12 +118,12 @@ def train(args):
                     result_pl: result,
                     is_train: False
                 })
-                for x, name in zip(result, ['nmr','protein','chemical']):
+                for x, name in zip(result, ['nmr', 'protein', 'chemical']):
                     print(name, x[0])
 
-    for epoch in range(1, args.epoch+1):
+    for epoch in range(1, args.epoch + 1):
         print(f'Epoch {epoch} start')
-        train_data, valid_data = get_data_loader(args)
+        train_data, valid_data, test_data = get_data_loader(args)
 
         # Training
         train_step(train_data, progress_handler, training_mode='train', summary=summary_handler)
@@ -125,11 +131,17 @@ def train(args):
         # Validation
         train_step(valid_data, validation_handler, training_mode='valid')
         print('--VALIDATION RESULT--')
-        validation_handler.emit()
+        validation_handler.emit(show_examples=True)
+
+        if len(args.test_file_name) > 0:
+            train_step(test_data, test_handler, training_mode='valid')
+            print('--TEST RESULT--')
+            test_handler.emit(show_examples=True)
+            test_handler.flush()
 
         progress_handler.flush()
         validation_handler.flush()
-        #print(validation_handler.input_sample)
+        # print(validation_handler.input_sample)
 
 
 if __name__ == '__main__':
