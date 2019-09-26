@@ -2,7 +2,7 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 
 from preprocess import create_every_alignment, create_trainable_data, change_configuration, mix_nmr, strict_split_data
-from preprocess import create_dataset_from_ibm
+from preprocess import create_dataset_from_ibm, create_dataset_from_kiba
 from preprocess.pubchem import collect_many
 from preprocess.tokenize import create_protein_vocab, create_chemical_vocab
 
@@ -37,6 +37,8 @@ if __name__=='__main__':
         mix_nmr(args.output_prefix + '.mix_nmr', wrapper=tqdm)
     elif args.task == 'create_from_ibm':
         create_dataset_from_ibm(args.output_prefix)
+    elif args.task == 'create_from_kiba':
+        create_dataset_from_kiba(args.output_prefix)
     elif args.task == 'get_pubchem':
         print('\n Start fetching pubchem data \n')
         collect_many(10000*10000+1, 30000*10000, task_pool_size=6)
