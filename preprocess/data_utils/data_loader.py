@@ -2,34 +2,49 @@ from ..data_reader import JSONDataReader, NMRDataReader, RestrictiveNMRDataReade
 from ..kernel import get_conf
 from .numpy_adapter import get_adapter
 import numpy as np
+import os
+import json
 
 
 def data_loader_args(parser):
     base_conf = get_conf()
     group = parser.add_argument_group('data_loader')
-    group.add_argument('--train_file_name', type=str, default=base_conf['trainable']['train'])
-    group.add_argument('--valid_file_name', type=str, default=base_conf['trainable']['valid'])
+    group.add_argument('--dataset_dir', type=str, default='')
+    group.add_argument('--train_file_name', type=str, default='')
+    group.add_argument('--valid_file_name', type=str, default='')
     group.add_argument('--test_file_name', type=str, default='')
     group.add_argument('--nmr_dir', type=str)
     group.add_argument('--batch_size', type=int)
     group.add_argument('--protein_sequence_length', type=int, default=256)
     group.add_argument('--chemical_sequence_length', type=int, default=256)
+    group.add_argument('--as_score', action='store_true')
 
 
 def get_data_loader(args):
-    train_data_loader = GeneralDataLoader(args.train_file_name, args.nmr_dir,
+    train = args.train_file_name
+    valid = args.valid_file_name
+    test = args.test_file_name
+
+    if len(args.dataset_dir) > 0:
+        with open(os.path.join(args.dataset_dir, 'config.json')) as f:
+            config = json.load(f)
+        train = os.path.join(args.dataset_dir, config['train_set'])
+        valid = os.path.join(args.dataset_dir, config['valid_set'])
+        test = os.path.join(args.dataset_dir, config['test_set_name'])  # TODO : need to fix
+
+    train_data_loader = GeneralDataLoader(train, args.nmr_dir,
                                           batch_size=args.batch_size,
                                           protein_sequence_length=args.protein_sequence_length,
                                           chemical_sequence_length=args.chemical_sequence_length,
                                           adapter=get_adapter(args))
 
-    valid_data_loader = GeneralDataLoader(args.valid_file_name, args.nmr_dir,
+    valid_data_loader = GeneralDataLoader(valid, args.nmr_dir,
                                           batch_size=args.batch_size,
                                           protein_sequence_length=args.protein_sequence_length,
                                           chemical_sequence_length=args.chemical_sequence_length,
                                           adapter=get_adapter(args))
 
-    test_data_loader = GeneralDataLoader(args.test_file_name, args.nmr_dir,
+    test_data_loader = GeneralDataLoader(test, args.nmr_dir,
                                          batch_size=args.batch_size,
                                          protein_sequence_length=args.protein_sequence_length,
                                          chemical_sequence_length=args.chemical_sequence_length,
