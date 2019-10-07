@@ -15,11 +15,11 @@ def add_progress_args(parser):
 
 
 def get_progress_handler(args):
-    return NormalProgressHandler(args.log_interval), TensorboardTracker(log_interval=args.log_interval)
+    return NormalProgressHandler(args, args.log_interval), TensorboardTracker(log_interval=args.log_interval)
 
 
 def get_valid_progress_handler(args):
-    return NormalProgressHandler(log_interval = -1)
+    return NormalProgressHandler(args, log_interval=-1)
 
 
 class TensorboardTracker(object):
@@ -51,7 +51,8 @@ class TensorboardTracker(object):
 
 class ProgressHandler(object):
     RESERVED_KWD = ['input_sample']
-    def __init__(self, log_interval=100):
+    def __init__(self, args, log_interval=100):
+        self.args = args
         self.log_interval = log_interval
         self.global_step = 0
         self.reset_progress()
@@ -96,14 +97,15 @@ class NormalProgressHandler(ProgressHandler):
                 result_str += f'{k} : {value}|'
 
         # Calculate some..good thing.. ROC curve
-        auc = sklearn.metrics.roc_auc_score(self.logged_stats['__label'], self.logged_stats['__pred'])
-        result_str += f'auc : %.3f|' % auc
+        if not self.args.as_score:
+            auc = sklearn.metrics.roc_auc_score(self.logged_stats['__label'], self.logged_stats['__pred'])
+            result_str += f'auc : %.3f|' % auc
         print(result_str)
 
         # Show examples
         if show_examples:
             print('-- show examples --')
-            print('Labels :', ['%.3f' % int(x) for x in self.logged_stats['__label'][:10]])
+            print('Labels :', ['%.3f' % float(x) for x in self.logged_stats['__label'][:10]])
             print('Preds  :', ['%.3f' % x for x in self.logged_stats['__pred'][:10]])
             print('Accu   :', [self.logged_stats['acc'][:10]])
 
