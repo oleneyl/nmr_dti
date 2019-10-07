@@ -58,7 +58,7 @@ class NMRAdapter():
         else:
             nmr_values = np.zeros([self.nmr_array_size])
 
-        return float(int(datum['bind'])), protein_indices, chemical_indices, nmr_values
+        return float(datum['bind']), protein_indices, chemical_indices, nmr_values
 
     def __call__(self, data_loader):
         for item in data_loader:
