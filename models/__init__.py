@@ -233,27 +233,21 @@ class ConcatAttentionModel(BaseDTIModel):
         return embedding
 
 
-def build_model(args, protein_encoded, nmr_array, smiles_encoded, is_train=True):
+def build_model(args):
     """
     Create output generation model from given placeholders
     """
     if args.concat_model == 'siamese':
-        model = SiameseDTIModel(args, protein_encoded, nmr_array, smiles_encoded, is_train=is_train)
-        return model.output, model
+        return SiameseDTIModel(args)
     elif args.concat_model == 'attentive':
-        model = ConcatAttentionModel(args, protein_encoded, nmr_array, smiles_encoded, is_train=is_train)
-        return model.output, model
+        return ConcatAttentionModel(args)
     else:
-        model = InitialDTIModel(args, protein_encoded, nmr_array, smiles_encoded, is_train=is_train)
-        return model.output, model
+        return InitialDTIModel(args)
 
 
-def get_model(args, protein_encoded, nmr_array, smiles_encoded, saved_model=None, is_train=True):
+def get_model(args, saved_model=None):
     if saved_model:
         # Load model from saved_model path
         pass
     else:
-        return build_model(args, protein_encoded, nmr_array, smiles_encoded, is_train=is_train)
-
-def get_keras_model(args):
-    return InitialDTIModel(args)
+        return build_model(args)

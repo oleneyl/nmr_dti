@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 from options import get_args
-from models import get_model, get_keras_model
+from models import get_model
 from progress import get_progress_handler, get_valid_progress_handler, TensorboardTracker
 from preprocess.data_utils.data_loader import get_data_loader
 from learning_rate import get_learning_rate_scheduler
@@ -21,7 +21,7 @@ def train(args):
     result_pl = tf.placeholder(shape=[None, 1], dtype=tf.float32, name='result_pl')
     global_step = tf.Variable(0, trainable=False, name='global_step')
 
-    dti_model = get_keras_model(args)
+    dti_model = get_model(args)
 
     model_inputs = dti_model.inputs()
     prediction = dti_model.predict_dti()
