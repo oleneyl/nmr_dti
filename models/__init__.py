@@ -76,6 +76,13 @@ class BaseDTIModel(object):
     def inspect_model_output(self):
         return self.nmr_model, self.protein_model, self.chemical_model
 
+    def create_keras_model(self):
+        model_inputs = self.inputs()
+        prediction = self.predict_dti()
+
+        keras_model = tf.keras.Model(inputs=model_inputs, outputs=prediction)
+        return keras_model
+
 class Bias(tf.keras.layers.Layer):
     def __init__(self, bias):
         super(Bias,self).__init__(self)
