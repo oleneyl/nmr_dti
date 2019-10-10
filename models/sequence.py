@@ -18,36 +18,42 @@ def transformer_args(parser):
 
 
 class RNNProteinModel(BaseModel):
-    def __init__(self, args, input_tensor, vocab_size, is_train=True):
+    def __init__(self, args, vocab_size):
         super(RNNProteinModel, self).__init__(args)
-        embedding = tf.keras.layers.Embedding(vocab_size, args.transformer_model_dim)(input_tensor)
-        embedding = tf.keras.layers.Dropout(rate=args.concat_dropout)(embedding, training=is_train)
-
+        self.embedding = tf.keras.layers.Embedding(vocab_size, args.transformer_model_dim)
         rnn_cell = tf.keras.layers.GRUCell(args.sequential_hidden_size, dropout=args.sequential_dropout)
         recurrent = tf.keras.layers.RNN(rnn_cell)
-        bidirectional_recurrent = tf.keras.layers.Bidirectional(recurrent)
+        self.bidirectional_recurrent = tf.keras.layers.Bidirectional(recurrent)
 
-        output = bidirectional_recurrent(embedding, training=is_train)
-        output = tf.keras.layers.Dense(args.sequential_dense)(output)
-        self.output = output
+        self.dense = tf.keras.layers.Dense(args.sequential_dense)
 
+    def call(self, input_tensor, training=None):
+        output = self.embedding(input_tensor)
+        output = self.bidirectional_recurrent(output, training=training)
+        output = self.dense(output)
+        return output
 
 class AttentionProteinModel(BaseModel):
-    def __init__(self, args, input_tensor, vocab_size, is_train=True):
-        self.encoder = Encoder(args.transformer_num_layers,
-                               args.transformer_model_dim,
-                               args.transformer_num_heads,
-                               args.transformer_hidden_dimension,
-                               vocab_size,
-                               rate=args.transformer_dropout_rate)
+    def __init__(self, args, vocab_size):
+        super(AttentionProteinModel, self).__init__(args)
+        self.vocab_size = vocab_size
 
-        output = self.encoder(input_tensor, is_train, None)
-        self.encoding = output
-        output = tf.keras.layers.Flatten()(output)
-        '''
-        output = tf.keras.layers.Dense(1, activation='relu')(output)
-        output = tf.keras.layers.BatchNormalization()(output, training=is_train)
-        output = tf.keras.layers.Dropout(rate=args.transformer_dropout_rate)(output, training=is_train)
-        output = tf.squeeze(output, axis=-1)
-        '''
-        self.output = tf.keras.layers.Dense(args.sequential_dense, activation='relu')(output)
+        self.encoder = Encoder(self.args.transformer_num_layers,
+                         self.args.transformer_model_dim,
+                         self.args.transformer_num_heads,
+                         self.args.transformer_hidden_dimension,
+                         self.vocab_size,
+                         rate=self.args.transformer_dropout_rate)
+
+        self.flatten = tf.keras.layers.Flatten()
+        self.dense = tf.keras.layers.Dense(self.args.sequential_dense, activation='relu')
+        self.batch_norm = tf.keras.layers.BatchNormalization()
+        self.dropout = tf.keras.layers.Dropout(self.args.concat_dropout)
+
+    def call(self, input_tensor, training=None):
+        output = self.encoder(input_tensor, mask=None, training=training)
+        output = self.flatten(output)
+        output = self.dense(output)
+        output = self.batch_norm(output, training=training)
+        output = self.dropout(output, training=training)
+        return output

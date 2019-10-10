@@ -4,7 +4,7 @@ computer - recongizable numpy objects.
 """
 
 import numpy as np
-from .vocab import SentencePieceVocab, DummyVocab, SimpleSMILESVocab
+from .vocab import SentencePieceVocab, DummyVocab, SimpleSMILESVocab, DTASMILESVocab, DTAProteinVocab
 
 
 def adapter_args(parser):
@@ -20,9 +20,15 @@ def adapter_args(parser):
 
 
 def get_adapter(args):
-    protein_vocab = SentencePieceVocab(args.protein_vocab)
-    # chemical_vocab = SentencePieceVocab(args.chemical_vocab)
-    chemical_vocab = SentencePieceVocab(args.chemical_vocab)
+    if args.protein_vocab == '__base__':
+        protein_vocab = DTAProteinVocab()
+    else:
+        protein_vocab = SentencePieceVocab(args.protein_vocab)
+
+    if args.chemical_vocab == '__base__':
+        chemical_vocab = DTASMILESVocab()
+    else:
+        chemical_vocab = SentencePieceVocab(args.chemical_vocab)
 
     return NMRAdapter(protein_vocab, chemical_vocab, nmr_array_size=args.nmr_array_size,
                       min_ppm=args.min_ppm, max_ppm=args.max_ppm)

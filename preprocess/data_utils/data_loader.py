@@ -60,10 +60,14 @@ class GeneralDataLoader(object):
                  adapter=lambda x: x,
                  ):
         self.batch_size = batch_size
+        self.data_file_name = data_file_name
         self.data_reader = JSONDataReader(data_file_name)
         self.protein_sequence_length = protein_sequence_length
         self.chemical_sequence_length = chemical_sequence_length
         self.adapter = adapter
+
+    def reset(self):
+        self.data_reader = JSONDataReader(self.data_file_name)
 
     def __iter__(self):
         batch = []
@@ -74,8 +78,12 @@ class GeneralDataLoader(object):
             if len(chemical_indices) < self.protein_sequence_length:
                 chemical_indices = chemical_indices + [0 for x in range(self.chemical_sequence_length -
                                                                         len(chemical_indices))]
+
             batch.append([[bind], protein_indices[:self.protein_sequence_length],
                           chemical_indices[:self.chemical_sequence_length], nmr_values.tolist()])
             if len(batch) == self.batch_size:
                 yield [np.array(x) for x in zip(*batch)]
                 batch = []
+
+    def flatten(self):
+        return list(self)

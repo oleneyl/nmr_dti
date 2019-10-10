@@ -3,26 +3,11 @@ import numpy as np
 import os
 
 from options import get_args
-from models import get_model
+from models import get_model, get_keras_model
 from progress import get_progress_handler, get_valid_progress_handler, TensorboardTracker
 from preprocess.data_utils.data_loader import get_data_loader
 from learning_rate import get_learning_rate_scheduler
 from pprint import pprint
-
-
-def get_optimizer(args, logits, labels, global_step, learning_rate):
-    loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=logits, labels=labels))
-
-    # Batch normalization
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-        grads = optimizer.compute_gradients(loss)
-        clipped_grads = [(tf.clip_by_value(grad, -1 * args.grad_clip, args.grad_clip), var) for grad, var in grads
-                         if grad is not None]
-        optim_op = optimizer.apply_gradients(clipped_grads, global_step=global_step)
-
-    return loss, optim_op
 
 
 def train(args):
@@ -33,115 +18,54 @@ def train(args):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_number)
 
     # Define Placeholders
-    protein_input = tf.placeholder(shape=[None, args.protein_sequence_length], dtype=tf.int32, name='protein_input')
-    nmr_input = tf.placeholder(shape=[None, args.nmr_array_size], dtype=tf.float32, name='nmr_input')
-    smile_input = tf.placeholder(shape=[None, args.chemical_sequence_length], dtype=tf.int32, name='smile_input')
     result_pl = tf.placeholder(shape=[None, 1], dtype=tf.float32, name='result_pl')
     global_step = tf.Variable(0, trainable=False, name='global_step')
 
+    dti_model = get_keras_model(args)
+
+    model_inputs = dti_model.inputs()
+    prediction = dti_model.predict_dti()
+
+    keras_model = tf.keras.Model(inputs=model_inputs, outputs=prediction)
+    keras_model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
+                        loss='mean_squared_error',
+                        metrics=['mean_squared_error'])
+
     # Create graph
-    is_train = tf.placeholder(shape=[], dtype=tf.bool, name='trainable')
-    binary_result, model = get_model(args, protein_input, nmr_input, smile_input, is_train=is_train)
-    learning_rate = get_learning_rate_scheduler(args)(global_step)
-    loss_op, optimize_op = get_optimizer(args, binary_result, result_pl, global_step, learning_rate)
+    learning_rate = get_learning_rate_scheduler(args)
 
-    predictions_op = tf.squeeze(tf.sigmoid(binary_result))
-
-    var_sizes = [np.product(list(map(int, v.shape))) * v.dtype.size
-                 for v in tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)]
-    print('Variable size', sum(var_sizes) / (1024 ** 2), 'MB')
-
-    initializer = tf.initializers.global_variables()
+    # Summary
+    keras_model.summary()
 
     progress_handler, summary_handler = get_progress_handler(args)
     validation_handler = get_valid_progress_handler(args)
     test_handler = get_valid_progress_handler(args)
 
-    # Tensorboard tracking
-    for variable in tf.trainable_variables():
-        summary_handler.hist(variable.name, variable)
-
-    summary_handler.hist('prediction', binary_result)
-    summary_handler.track('loss', loss_op)
-    summary_handler.track('learning_rate', learning_rate)
-    summary_handler.create_summary(global_step)
-
-    # Create session
-    sess = tf.Session()
-    sess.run(initializer)
-    summary_handler.fix_summary(sess)
-
-    print('Training start!')
-
-    def train_step(data_loader, progress, training_mode='train', manual_event_tide=1000, summary=None):
-        _is_train = (training_mode == 'train')
-        for idx, (result, protein, smile, nmr) in enumerate(data_loader):
-            if _is_train:
-                output, loss, pred, _ = sess.run(
-                    [binary_result, loss_op, predictions_op, optimize_op], feed_dict={
-                        protein_input: protein,
-                        nmr_input: nmr,
-                        smile_input: smile,
-                        result_pl: result,
-                        is_train: True
-                    })
-            else:
-                output, loss, pred = sess.run(
-                    [binary_result, loss_op, predictions_op], feed_dict={
-                        protein_input: protein,
-                        nmr_input: nmr,
-                        smile_input: smile,
-                        result_pl: result,
-                        is_train: False
-                    })
-            progress.log({
-                'loss': loss,
-                'acc': [1 if (r - 0.5) * (o - 0.5) > 0 else 0 for r, o in zip(result, pred)],
-                '__pred': pred.tolist(),
-                '__label': [x[0] for x in result],
-            })
-            if summary:
-                summary.create_summary(sess.run(global_step), feed_dict={
-                    protein_input: protein,
-                    nmr_input: nmr,
-                    smile_input: smile,
-                    result_pl: result,
-                    is_train: False
-                })
-            if (idx + 1) % manual_event_tide == 0:
-                # Define manula events
-                print('--- Displaying model output inspection ---')
-                result = sess.run(model.inspect_model_output(), feed_dict={
-                    protein_input: protein,
-                    nmr_input: nmr,
-                    smile_input: smile,
-                    result_pl: result,
-                    is_train: False
-                })
-                for x, name in zip(result, ['nmr', 'protein', 'chemical']):
-                    print(name, x[0])
+    metrics_names = keras_model.metrics_names
 
     for epoch in range(1, args.epoch + 1):
-        print(f'Epoch {epoch} start')
+        keras_model.reset_metrics()
         train_data, valid_data, test_data = get_data_loader(args)
+        print(f'Epoch {epoch} start')
 
-        # Training
-        train_step(train_data, progress_handler, training_mode='train', summary=summary_handler)
-        progress_handler.emit()
-        # Validation
-        train_step(valid_data, validation_handler, training_mode='valid')
-        print('--VALIDATION RESULT--')
-        validation_handler.emit(show_examples=True)
+        for idx, (label, protein, chemical, nmr) in enumerate(train_data):
+            result = keras_model.train_on_batch((protein, chemical), label)
 
-        if len(args.test_file_name) > 0:
-            train_step(test_data, test_handler, training_mode='valid')
-            print('--TEST RESULT--')
-            test_handler.emit(show_examples=True)
-            test_handler.flush()
+            if idx % args.log_interval == 0:
+                print("Training: ",
+                      "{}: {:.3f}".format(metrics_names[0], result[0]))
 
-        progress_handler.flush()
-        validation_handler.flush()
-        # print(validation_handler.input_sample)
+        for label, protein, chemical, nmr in valid_data:
+            result = keras_model.test_on_batch((protein, chemical), label, reset_metrics=False)
+        print("Validation: ",
+              "{}: {:.3f}".format(metrics_names[0], result[0]))
+
+        for label, protein, chemical, nmr in test_data:
+            result = keras_model.test_on_batch((protein, chemical), label, reset_metrics=False)
+        print("Test: ",
+              "{}: {:.3f}".format(metrics_names[0], result[0]))
+
+        tf.keras.backend.set_value(keras_model.optimizer.lr, learning_rate(epoch))
 
 
 if __name__ == '__main__':

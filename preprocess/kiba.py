@@ -24,31 +24,39 @@ def kiba_from_deep_dta(dir_path, as_binary=False):
 
     with open(os.path.join(dir_path, PROTEIN_FILE_NAME)) as f:
         proteins = json.load(f, object_pairs_hook=OrderedDict)
-        proteins_key = list(proteins.keys())
+        proteins_key = [x for x in proteins]
 
     with open(os.path.join(dir_path, LIGAND_FILE_NAME)) as f:
         ligands = json.load(f, object_pairs_hook=OrderedDict)
-        ligands_key = list(ligands.keys())
+        ligands_key = [x for x in ligands]
 
     with open(os.path.join(dir_path, 'Y'), 'rb') as f:
         matrix = pickle.load(f, encoding='latin1')
 
-    label_raw_indices, label_col_indices = np.where(np.isnan(matrix) == False)
+    label_row_indices, label_col_indices = np.where(np.isnan(matrix)==False)
 
+    XD = []
+    XT = []
+    for d in ligands.keys():
+        XD.append(ligands[d])
+
+    for t in proteins.keys():
+        XT.append(proteins[t])
+    
     # Shuffle
-    test_fold = json.load(open(os.path.join(dir_path,"folds/test_fold_setting1.txt")))
-    train_folds = json.load(open(os.path.join(dir_path,"folds/train_fold_setting1.txt")))
+    test_fold = json.load(open(os.path.join(dir_path, "folds/test_fold_setting1.txt")))
+    train_folds = json.load(open(os.path.join(dir_path, "folds/train_fold_setting1.txt")))
 
     def create_dataset_from_fold(fold):
         from tqdm import tqdm
         dataset = []
         for idx in fold:
-            r = label_raw_indices[idx]
+            r = label_row_indices[idx]
             c = label_col_indices[idx]
             ligand_id = ligands_key[int(r)]
             protein_id = proteins_key[int(c)]
-            protein_seq = proteins[protein_id]
-            ligand_seq = ligands[ligand_id]
+            ligand_seq = XD[r]
+            protein_seq = XT[c]
             bind = matrix[r][c]
 
             if as_binary:
