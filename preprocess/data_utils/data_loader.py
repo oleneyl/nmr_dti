@@ -7,7 +7,6 @@ import json
 
 
 def data_loader_args(parser):
-    base_conf = get_conf()
     group = parser.add_argument_group('data_loader')
     group.add_argument('--dataset_dir', type=str, default='')
     group.add_argument('--train_file_name', type=str, default='')
@@ -30,8 +29,15 @@ def get_data_loader(args):
             config = json.load(f)
         train = os.path.join(args.dataset_dir, config['train_set'])
         valid = os.path.join(args.dataset_dir, config['valid_set'])
-        test = os.path.join(args.dataset_dir, config['test_set_name'])  # TODO : need to fix
-
+        if 'test_set' in config:
+            test = os.path.join(args.dataset_dir, config['test_set'])
+        elif 'test_set_name' in config:  # For previous configurations.. need to be replaced but preserve
+            # for compatibility.
+            test = os.path.join(args.dataset_dir, config['test_set_name'])  # TODO : need to fix
+        else:
+            print("*****WARNING******\n\nNo validation example exist in given configuration. test set will be replaced \
+            into validation set automatically.\n")
+            test = os.path.join(args.dataset_dir, config['valid_set'])
     train_data_loader = GeneralDataLoader(train, args.nmr_dir,
                                           batch_size=args.batch_size,
                                           protein_sequence_length=args.protein_sequence_length,
