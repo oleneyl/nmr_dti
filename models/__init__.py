@@ -32,6 +32,7 @@ def add_model_args(parser):
 
     group.add_argument('--output_bias', type=float, default=0.0)
 
+
 class BaseDTIModel(object):
     def __init__(self, args):
         self._protein_encoded = tf.keras.Input(shape=[args.protein_sequence_length], dtype=tf.int32, name='protein_input')
@@ -39,9 +40,9 @@ class BaseDTIModel(object):
         self._smiles_encoded = tf.keras.Input(shape=[args.chemical_sequence_length], dtype=tf.int32, name='smile_input')
         self.args = args
 
-        #self.nmr_model = NMRModel(args, sel, is_train=is_train)
         self.protein_model = None
         self.chemical_model = None
+        self.nmr_model = None
 
         with tf.name_scope('protein'):
             if args.protein_model == 'gru':
@@ -57,12 +58,20 @@ class BaseDTIModel(object):
                 self.chemical_model = AttentionProteinModel(args, args.chemical_vocab_size)
             elif args.chemical_model == 'cnn':
                 self.chemical_model = SequentialCNNModel(args, args.chemical_vocab_size)
+        if args.nmr:
+            with tf.name_scope('nmr'):
+                self.nmr_model = NMRModel(args)
+                self.nmr_model = self.nmr_model(self._nmr_array)
 
         self.protein_model = self.protein_model(self._protein_encoded)
         self.chemical_model = self.chemical_model(self._smiles_encoded)
 
+
     def inputs(self):
-        return [self._protein_encoded, self._smiles_encoded]
+        if self.args.nmr:
+            return [self._protein_encoded, self._smiles_encoded, self._nmr_array]
+        else:
+            return [self._protein_encoded, self._smiles_encoded]
 
     def unsupervised_protein(self):
         pass
@@ -79,9 +88,11 @@ class BaseDTIModel(object):
     def create_keras_model(self):
         model_inputs = self.inputs()
         prediction = self.predict_dti()
-
+        if not self.args.as_score:
+            prediction = tf.keras.layers.Activation('sigmoid')(prediction)
         keras_model = tf.keras.Model(inputs=model_inputs, outputs=prediction)
         return keras_model
+
 
 class Bias(tf.keras.layers.Layer):
     def __init__(self, bias):
@@ -91,9 +102,13 @@ class Bias(tf.keras.layers.Layer):
     def call(self, input):
         return tf.add(input, self.bias)
 
+
 class InitialDTIModel(BaseDTIModel):
     def predict_dti(self):
-        embedding = tf.keras.layers.concatenate([self.protein_model, self.chemical_model], 1)
+        if self.args.nmr:
+            embedding = tf.keras.layers.concatenate([self.protein_model, self.chemical_model, self.nmr_model], 1)
+        else:
+            embedding = tf.keras.layers.concatenate([self.protein_model, self.chemical_model], 1)
         #                       self.chemical_model.get_output()], 1)
         '''
         embedding = tf.keras.layers.Dense(self.args.concat_hidden_layer_size, activation='relu',

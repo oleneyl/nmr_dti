@@ -34,9 +34,9 @@ def train(args):
     def create_input_sample(datum):
         _label, _protein, _chemical, _nmr = datum
         if args.nmr:
-            return (_protein, _chemical), _label
-        else:
             return (_protein, _chemical, _nmr), _label
+        else:
+            return (_protein, _chemical), _label
 
     print("***  Run environment  ***")
     pprint(args)
@@ -72,8 +72,6 @@ def train(args):
     model.summary()
     progress_handler, tensorboard = get_progress_handler(args)
     tensorboard.info()  # Print Information what now tensorboard is tracking
-    validation_handler = get_valid_progress_handler(args)
-    test_handler = get_valid_progress_handler(args)
 
     metrics_names = model.metrics_names
     global_step = 0
@@ -84,8 +82,8 @@ def train(args):
         print(f'Epoch {epoch} start')
 
         for idx, datum in enumerate(train_data):
-
-            result = model.train_on_batch(*create_input_sample(datum))
+            xs, ys = create_input_sample(datum)
+            result = model.train_on_batch(xs, ys)
             global_step += 1
             if idx % args.log_interval == 0:
                 log = "Training: "
@@ -94,24 +92,16 @@ def train(args):
                 print(log)
                 tensorboard.create_summary(global_step, result, model, prefix='train')
 
-        for datum in valid_data:
-            result = model.test_on_batch(*create_input_sample(datum), reset_metrics=False)
-        log = "Validation: "
-        for i in range(len(metrics_names)):
-            log += "{}: {:.3f} | ".format(metrics_names[i], result[i])
-        print(log)
-        tensorboard.create_summary(global_step, result, model, prefix='valid')
-        model.reset_metrics()
-
-
-        for label, protein, chemical, nmr in test_data:
-            result = model.test_on_batch((protein, chemical), label, reset_metrics=False)
-        log = "Test: "
-        for i in range(len(metrics_names)):
-            log += "{}: {:.3f} | ".format(metrics_names[i], result[i])
-        print(log)
-        tensorboard.create_summary(global_step, result, model, prefix='test')
-        model.reset_metrics()
+        for dataset, set_type in ((valid_data, 'valid'), (test_data, 'test')):
+            for datum in dataset:
+                xs, ys = create_input_sample(datum)
+                result = model.test_on_batch(xs, ys, reset_metrics=False)
+            log = f"{set_type}: "
+            for i in range(len(metrics_names)):
+                log += "{}: {:.3f} | ".format(metrics_names[i], result[i])
+            print(log)
+            tensorboard.create_summary(global_step, result, model, prefix=set_type)
+            model.reset_metrics()
 
 if __name__ == '__main__':
     train(get_args())

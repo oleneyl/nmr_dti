@@ -8,6 +8,7 @@ def get_args():
     parser = ArgumentParser()
 
     base_group = parser.add_argument_group('base')
+    base_group.add_argument('--nmr', action='store_true', help='determine whether use nmr data or not')
 
     add_data_util_args(parser)
     add_model_args(parser)
