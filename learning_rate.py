@@ -1,5 +1,6 @@
 import math
 import tensorflow as tf
+import numpy as np
 
 def add_learning_rate_option(parser):
     group = parser.add_argument_group(parser)
@@ -16,15 +17,35 @@ def add_learning_rate_option(parser):
 def get_learning_rate_scheduler(args):
     batch_size = args.batch_size
 
-    def get_triangle_lr(step):
-        float_step = tf.cast(step, tf.float32)
+    def get_triangle_lr(epoch):
+        float_step = tf.cast(epoch, tf.float32)
         warm_up_step_size = tf.constant(args.warm_up_step_size, dtype=tf.float32)
         warm_up_rate = args.lr * tf.cast(float_step, tf.float32) / warm_up_step_size
         decay_rate = tf.maximum(args.min_lr, args.lr * (2 * warm_up_step_size - float_step) / warm_up_step_size)
         return tf.minimum(warm_up_rate, decay_rate)
 
-    def get_decay_lr(step):
-        return args.lr * tf.exp(-1 * step / args.decay_rate)
+    def get_decay_lr(epoch):
+        return args.lr * tf.exp(-1 * epoch / args.decay_rate)
+
+    if args.lr_scheduler == 'triangle':
+        return get_triangle_lr
+    elif args.lr_scheduler == 'decay':
+        return get_decay_lr
+    else:
+        return lambda x: args.lr
+
+def get_scheduler(args):
+    batch_size = args.batch_size
+
+    def get_triangle_lr(epoch):
+        float_step = float(epoch)
+        warm_up_step_size = args.warm_up_step_size
+        warm_up_rate = args.lr * float_step / warm_up_step_size
+        decay_rate = max(args.min_lr, args.lr * (2 * warm_up_step_size - float_step) / warm_up_step_size)
+        return min(warm_up_rate, decay_rate)
+
+    def get_decay_lr(epoch):
+        return args.lr * np.exp(-1 * epoch / args.decay_rate)
 
     if args.lr_scheduler == 'triangle':
         return get_triangle_lr
