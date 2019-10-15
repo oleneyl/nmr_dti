@@ -15,7 +15,7 @@ def add_progress_args(parser):
 
 
 def get_progress_handler(args):
-    return NormalProgressHandler(args, args.log_interval), TensorboardTracker(log_interval=args.log_interval)
+    return NormalProgressHandler(args, args.log_interval), TensorboardTracker()
 
 
 def get_valid_progress_handler(args):
@@ -23,31 +23,29 @@ def get_valid_progress_handler(args):
 
 
 class TensorboardTracker(object):
-    def __init__(self, log_interval=100):
-        self._graph_fixed = False
+    def __init__(self):
         self.log_dir_path = f'./.tfLog/{time.time()}'
         os.makedirs(self.log_dir_path)
-        self.log_interval = log_interval
-
-    def track(self, name, value):
-        if self._graph_fixed:
-            raise ValueError('Tracking additional variable after fixing summary is not available.')
-        tf.summary.scalar(name, value)
-
-    def hist(self, name, value):
-        tf.summary.histogram(name, value)
-
-    def fix_summary(self, sess):
-        self.summary_op = tf.summary.merge_all()
-        self._graph_fixed = True
         self.writer = tf.summary.FileWriter(self.log_dir_path)
-        self.writer.add_graph(sess.graph)
-        self.sess = sess
 
-    def create_summary(self, global_step, feed_dict={}):
-        if global_step % self.log_interval == 0:
-            summary = self.sess.run(self.summary_op, feed_dict=feed_dict)
-            self.writer.add_summary(summary, global_step=global_step)
+    def info(self):
+        print("***  Tensorboard API is tracking output from model!  ***")
+        print(f"Watching at :: {self.log_dir_path}\n")
+
+    @staticmethod
+    def named_logs(model, logs, prefix=''):
+        result = {}
+        for name, log in zip(model.metrics_names, logs):
+            result[os.path.join(prefix, name)] = log
+        return result
+
+    def create_summary(self, global_step, logs, model, prefix=''):
+        named_logs = TensorboardTracker.named_logs(model, logs, prefix=prefix)
+        summary = tf.Summary(value=[
+            tf.Summary.Value(tag=name, simple_value=named_logs[name]) for name in named_logs
+        ])
+        self.writer.add_summary(summary, global_step=global_step)
+
 
 class ProgressHandler(object):
     RESERVED_KWD = ['input_sample']
