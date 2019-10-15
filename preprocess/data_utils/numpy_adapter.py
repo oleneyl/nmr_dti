@@ -34,7 +34,7 @@ def get_adapter(args):
                       min_ppm=args.min_ppm, max_ppm=args.max_ppm)
 
 
-class NMRAdapter():
+class NMRAdapter(object):
     def __init__(self, protein_vocab, chemical_vocab, nmr_array_size=1000,
                  min_ppm=0,
                  max_ppm=10):
