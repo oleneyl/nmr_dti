@@ -9,6 +9,16 @@ from tqdm import tqdm
 from collections import defaultdict
 import numpy as np
 
+from .kernel import get_conf
+
+
+def get_nmr_engine(engine_dir=None):
+    if engine_dir is None:
+        conf = get_conf()
+        return NMRQueryEngine(conf['nmr']['engine_dir'])
+    else:
+        return NMRQueryEngine(engine_dir)
+
 
 class NMRDatum(object):
     LOAD_FAIL = 1
