@@ -312,6 +312,37 @@ class Encoder(tf.keras.layers.Layer):
         return x  # (batch_size, input_seq_len, d_model)
 
 
+class VectorEncoder(tf.keras.layers.Layer):
+    def __init__(self, num_layers, d_model, num_heads, dff,
+                 rate=0.1):
+        super(VectorEncoder, self).__init__()
+
+        self.d_model = d_model
+        self.num_layers = num_layers
+
+        self.pos_encoding = positional_encoding(10000, self.d_model)
+
+        self.enc_layers = [EncoderLayer(d_model, num_heads, dff, rate)
+                           for _ in range(num_layers)]
+
+        self.dropout = tf.keras.layers.Dropout(rate)
+
+    def call(self, x, mask=None, training=None):
+        seq_len = tf.shape(x)[1]
+
+        # adding embedding and position encoding.
+        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
+        x += self.pos_encoding[:, :seq_len, :]
+
+        x = self.dropout(x, training=training)
+
+        for i in range(self.num_layers):
+            x = self.enc_layers[i](x, training, mask)
+
+        return x  # (batch_size, input_seq_len, d_model)
+
+
+
 class Decoder(tf.keras.layers.Layer):
     def __init__(self, num_layers, d_model, num_heads, dff, target_vocab_size,
                  rate=0.1):
@@ -347,6 +378,42 @@ class Decoder(tf.keras.layers.Layer):
 
         # x.shape == (batch_size, target_seq_len, d_model)
         return x, attention_weights
+
+
+class VectorDecoder(tf.keras.layers.Layer):
+    def __init__(self, num_layers, d_model, num_heads, dff,
+                 rate=0.1):
+        super(VectorDecoder, self).__init__()
+
+        self.d_model = d_model
+        self.num_layers = num_layers
+
+        self.pos_encoding = positional_encoding(10000, d_model)
+
+        self.dec_layers = [DecoderLayer(d_model, num_heads, dff, rate)
+                           for _ in range(num_layers)]
+        self.dropout = tf.keras.layers.Dropout(rate)
+
+    def call(self, x, enc_output, training,
+             look_ahead_mask, padding_mask):
+        seq_len = tf.shape(x)[1]
+        attention_weights = {}
+
+        x *= tf.math.sqrt(tf.cast(self.d_model, tf.float32))
+        x += self.pos_encoding[:, :seq_len, :]
+
+        x = self.dropout(x, training=training)
+
+        for i in range(self.num_layers):
+            x, block1, block2 = self.dec_layers[i](x, enc_output, training,
+                                                   look_ahead_mask, padding_mask)
+
+            attention_weights['decoder_layer{}_block1'.format(i + 1)] = block1
+            attention_weights['decoder_layer{}_block2'.format(i + 1)] = block2
+
+        # x.shape == (batch_size, target_seq_len, d_model)
+        return x, attention_weights
+
 
 
 class Transformer(tf.keras.Model):

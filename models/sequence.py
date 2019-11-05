@@ -1,6 +1,6 @@
 from .base import BaseModel
 import tensorflow as tf
-from .attention import Encoder, Decoder, create_padding_mask
+from .attention import Encoder, VectorEncoder
 
 """
 ProteinModel :: get Input as indices_array, return Tensor with shape [None, args.sequential_dense]
@@ -33,17 +33,25 @@ class RNNProteinModel(BaseModel):
         output = self.dense(output)
         return output
 
+
 class AttentionProteinModel(BaseModel):
-    def __init__(self, args, vocab_size):
+    def __init__(self, args, vocab_size, vectorized=False):
         super(AttentionProteinModel, self).__init__(args)
         self.vocab_size = vocab_size
 
-        self.encoder = Encoder(self.args.transformer_num_layers,
-                         self.args.transformer_model_dim,
-                         self.args.transformer_num_heads,
-                         self.args.transformer_hidden_dimension,
-                         self.vocab_size,
-                         rate=self.args.transformer_dropout_rate)
+        if vectorized:
+            self.encoder = VectorEncoder(self.args.transformer_num_layers,
+                                         self.args.transformer_model_dim,
+                                         self.args.transformer_num_heads,
+                                         self.args.transformer_hidden_dimension,
+                                         rate=self.args.transformer_dropout_rate)
+        else:
+            self.encoder = Encoder(self.args.transformer_num_layers,
+                                   self.args.transformer_model_dim,
+                                   self.args.transformer_num_heads,
+                                   self.args.transformer_hidden_dimension,
+                                   self.vocab_size,
+                                   rate=self.args.transformer_dropout_rate)
 
         self.flatten = tf.keras.layers.Flatten()
         self.dense = tf.keras.layers.Dense(self.args.sequential_dense, activation='relu')
