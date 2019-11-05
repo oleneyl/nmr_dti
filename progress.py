@@ -15,7 +15,9 @@ def add_progress_args(parser):
 
 
 def get_progress_handler(args):
-    return NormalProgressHandler(args, args.log_interval), TensorboardTracker()
+    tensorboard_tracker = TensorboardTracker()
+    normal_tracker = NormalProgressHandler(args, args.log_interval, tensorboard_tracker=tensorboard_tracker)
+    return normal_tracker, tensorboard_tracker
 
 
 def get_valid_progress_handler(args):
@@ -87,6 +89,18 @@ class ProgressHandler(object):
 
 
 class NormalProgressHandler(ProgressHandler):
+    def __init__(self, args, log_interval=100, tensorboard_tracker=None, use_stdout=True):
+        super(NormalProgressHandler, self).__init__(args, log_interval=log_interval)
+        self.tensorboard_tracker = tensorboard_tracker
+        self.use_stdout = use_stdout
+
+    def print_log(self, log):
+        if self.use_stdout:
+            print(log)
+        if self.tensorboard_tracker is not None:
+            with open(os.path.join(self.tensorboard_tracker.log_dir_path, "Log"), "a+") as f:
+                f.write(log+"\n")
+
     def emit(self, show_examples=False):
         result_str = f'At step {self.step} | Elapsed time {"%.3f"%self.elapsed_time()}|'
         for k, v in self.logged_stats.items():
@@ -98,13 +112,13 @@ class NormalProgressHandler(ProgressHandler):
         if not self.args.as_score:
             auc = sklearn.metrics.roc_auc_score(self.logged_stats['__label'], self.logged_stats['__pred'])
             result_str += f'auc : %.3f|' % auc
-        print(result_str)
+        self.print_log(result_str)
 
         # Show examples
         if show_examples:
-            print('-- show examples --')
-            print('Labels :', ['%.3f' % float(x) for x in self.logged_stats['__label'][:10]])
-            print('Preds  :', ['%.3f' % x for x in self.logged_stats['__pred'][:10]])
-            print('Accu   :', [self.logged_stats['acc'][:10]])
+            self.print_log('-- show examples --')
+            self.print_log('Labels :', ['%.3f' % float(x) for x in self.logged_stats['__label'][:10]])
+            self.print_log('Preds  :', ['%.3f' % x for x in self.logged_stats['__pred'][:10]])
+            self.print_log('Accu   :', [self.logged_stats['acc'][:10]])
 
         super(NormalProgressHandler, self).emit()
