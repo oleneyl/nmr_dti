@@ -3,12 +3,13 @@ import pickle
 import json
 import os
 import numpy as np
+import math
 
 KIBA_DATASET_PATH = '/DATA/meson324/DeepDTA/kiba'
-
+DAVIS_DATASET_PATH = '/DATA/meson324/DeepDTA/davis'
 
 def get_kiba_dataset(dir_path=KIBA_DATASET_PATH, as_binary=False):
-    train, test = kiba_from_deep_dta(dir_path, as_binary=as_binary)
+    train, test = data_from_deep_dta(dir_path, as_binary=as_binary)
     # Train - valid split
     valid = train[0]
     train = sum(train[1:], [])
@@ -16,8 +17,18 @@ def get_kiba_dataset(dir_path=KIBA_DATASET_PATH, as_binary=False):
     return train, valid, test
 
 
+def get_davis_dataset(dir_path=DAVIS_DATASET_PATH, as_binary=False):
+    def to_value(bind):
+        return 9 - math.log10(bind)
+    train, test = data_from_deep_dta(dir_path, as_binary=as_binary, bind_callback=to_value)
+    # Train - valid split
+    valid = train[0]
+    train = sum(train[1:], [])
 
-def kiba_from_deep_dta(dir_path, as_binary=False):
+    return train, valid, test
+
+
+def data_from_deep_dta(dir_path, as_binary=False, bind_callback=None):
     PROTEIN_FILE_NAME = 'proteins.txt'
     LIGAND_FILE_NAME = 'ligands_can.txt'
     BINARY_CRITERION = 12.1  # https://arxiv.org/pdf/1908.06760.pdf page 10
@@ -58,6 +69,9 @@ def kiba_from_deep_dta(dir_path, as_binary=False):
             ligand_seq = XD[r]
             protein_seq = XT[c]
             bind = matrix[r][c]
+
+            if bind_callback:
+                bind = bind_callback(bind)
 
             if as_binary:
                 bind = True if (bind > BINARY_CRITERION) else False
