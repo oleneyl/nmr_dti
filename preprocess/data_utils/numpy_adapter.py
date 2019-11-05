@@ -5,7 +5,7 @@ computer - recongizable numpy objects.
 
 import numpy as np
 from .vocab import SentencePieceVocab, DummyVocab, SimpleSMILESVocab, DTASMILESVocab, DTAProteinVocab
-
+from rdkit import Chem
 
 def adapter_args(parser):
     group = parser.add_argument_group('adapter')
@@ -45,22 +45,31 @@ class NMRAdapter(object):
         self.max_ppm = max_ppm
 
     @classmethod
-    def normalize_nmr(cls, nmr_data, nmr_min, nmr_max, min_ppm, max_ppm, size):
+    def normalize_nmr(cls, nmr_data, nmr_min, nmr_max, min_ppm, max_ppm, size, h_count=1):
         """Fit given data into min_ppm ~ max_ppm with given size.
         """
 
         nmr_data = np.array(nmr_data)
-        nmr_data = nmr_data / np.max(nmr_data)
+        nmr_data = nmr_data - np.min(nmr_data)
+        nmr_data = nmr_data / np.sum(nmr_data) * h_count / (size / len(nmr_data))
         target_point = np.linspace(nmr_min, nmr_max, size)
         current_point = np.linspace(min_ppm, max_ppm, len(nmr_data))
-        return np.interp(target_point, current_point, nmr_data, 0.0, 0.0)
+        nmr_interp = np.interp(target_point, current_point, nmr_data, 0.0, 0.0)
+        nmr_data = nmr_interp
+        nmr_seq = nmr_data  # No log scale
+        #nmr_seq = np.log(nmr_data)  # Log scale
+        nmr_seq = (nmr_seq - np.min(nmr_seq)) * (nmr_interp > 0) + np.zeros([size])
+        return nmr_seq
 
     def adapt(self, datum):
         protein_indices = self.protein_vocab(datum.get('sequence', [0]))
         chemical_indices = self.chemical_vocab(datum.get('smiles', [0]))
+        mol = Chem.MolFromSmiles(datum.get('smiles', [0]))
+        mol = Chem.AddHs(mol)
+        h_count = len([i for i in mol.GetAtoms() if i.GetAtomicNum() == 1])
         if 'nmr_freq' in datum:
             nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
-                                        self.min_ppm, self.max_ppm, self.nmr_array_size)
+                                        self.min_ppm, self.max_ppm, self.nmr_array_size, h_count=h_count)
         else:
             nmr_values = np.zeros([self.nmr_array_size])
 
