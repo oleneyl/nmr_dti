@@ -11,7 +11,7 @@ def add_learning_rate_option(parser):
     group.add_argument('--warm_up_step_size', type=int, default=20000)
 
     group.add_argument('--decay_rate', type=int, default=500)
-    group.add_argument('--min_lr', type=float, default=1e-5)
+    group.add_argument('--min_lr', type=float, default=1e-7)
 
 
 def get_learning_rate_scheduler(args):
