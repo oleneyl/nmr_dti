@@ -95,8 +95,9 @@ def create_dataset_from_ibm(save_dir, wrapper=None):
 def create_dataset_from_kiba(save_dir, wrapper=None, as_binary=False):
     """
     Create dataset from KIBA
+    file must be downloaded and path must be specified in configuration.
     """
-    train, valid, test = get_kiba_dataset(as_binary=as_binary)
+    train, valid, test = get_kiba_dataset(get_conf()['kiba'], as_binary=as_binary)
     # No negative data mixing needed
     os.makedirs(save_dir, exist_ok=True)
 
@@ -112,8 +113,9 @@ def create_dataset_from_kiba(save_dir, wrapper=None, as_binary=False):
 def create_dataset_from_davis(save_dir, wrapper=None, as_binary=False):
     """
     Create dataset from DAVIS
+    file must be downloaded and path must be specified in configuration.
     """
-    train, valid, test = get_davis_dataset(as_binary=as_binary)
+    train, valid, test = get_davis_dataset(get_conf()['davis'], as_binary=as_binary)
     # No negative data mixing needed
     os.makedirs(save_dir, exist_ok=True)
 
