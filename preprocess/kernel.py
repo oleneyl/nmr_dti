@@ -127,6 +127,15 @@ class AbstractFileReader(AbstractIterable):
                     print(datum)
                     raise
 
+    @classmethod
+    def save_train_valid_test(cls, train, valid, test, save_dir):
+        """
+        Shortcut for train-valid-test tuple dataset saving
+        """
+        cls.save_from_raw(train, os.path.join(save_dir, 'train'))
+        cls.save_from_raw(valid, os.path.join(save_dir, 'valid'))
+        cls.save_from_raw(test, os.path.join(save_dir, 'test'))
+
     def __iter__(self):
         if len(self._cache) > 0:
             for obj in self._cache:

@@ -83,13 +83,10 @@ def create_dataset_from_ibm(save_dir, wrapper=None):
     valid_set = mix_positive_and_negative(*valid_reader.create_dataset())
     test_set = mix_positive_and_negative(*test_reader.create_dataset())
 
-    JSONDataReader.save_from_raw(train_set, os.path.join(save_dir, 'train'))
-    JSONDataReader.save_from_raw(valid_set, os.path.join(save_dir, 'valid'))
-    JSONDataReader.save_from_raw(test_set, os.path.join(save_dir, 'test'))
+    JSONDataReader.save_train_valid_test(train_set, valid_set, test_set, save_dir)
 
     add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
                     data_read_type='line_json', origin='IBM', includes_nmr=False, test_set_name='test')
-
 
 
 def create_dataset_from_kiba(save_dir, wrapper=None, as_binary=False):
@@ -101,9 +98,7 @@ def create_dataset_from_kiba(save_dir, wrapper=None, as_binary=False):
     # No negative data mixing needed
     os.makedirs(save_dir, exist_ok=True)
 
-    JSONDataReader.save_from_raw(train, os.path.join(save_dir, 'train'))
-    JSONDataReader.save_from_raw(valid, os.path.join(save_dir, 'valid'))
-    JSONDataReader.save_from_raw(test, os.path.join(save_dir, 'test'))
+    JSONDataReader.save_train_valid_test(train, valid, test, save_dir)
 
     add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
                     data_read_type='line_json', origin='kiba', includes_nmr=False, test_set_name='test',
