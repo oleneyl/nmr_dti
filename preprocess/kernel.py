@@ -11,20 +11,25 @@ def change_configuration(conf_file_name):
     CONFIGURATION_FILE_NAME = conf_file_name
 
 
+def get_conf_file():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIGURATION_FILE_NAME)
+
+
 def get_conf():
-    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIGURATION_FILE_NAME)
+    file_path = get_conf_file()
     with open(file_path) as f:
         return json.load(f)
 
 
-def edit_conf(kwd, value):
+def edit_conf(dict_opt):
     """
     This function will PERMANANTLY change referring configuration.
     This function only be used when downloading raw file.
     """
     current_conf = get_conf()
-    current_conf[kwd] = value
-    with open(CONFIGURATION_FILE_NAME, 'w') as f:
+    for kwd in dict_opt:
+        current_conf[kwd] = dict_opt[kwd]
+    with open(get_conf_file(), 'w') as f:
         json.dump(current_conf, f, indent=4, ensure_ascii=False)
 
 

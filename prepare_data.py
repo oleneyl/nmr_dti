@@ -4,8 +4,9 @@ from argparse import ArgumentParser
 from preprocess import create_every_alignment, create_trainable_data, change_configuration, mix_nmr, strict_split_data
 from preprocess import create_dataset_from_ibm, create_dataset_from_kiba, create_dataset_from_davis
 from preprocess.pubchem import collect_many
-from preprocess.tokenize import create_protein_vocab, create_chemical_vocab, create_chemical_vocab_from_dataset
+from preprocess.tokenizer import create_protein_vocab, create_chemical_vocab, create_chemical_vocab_from_dataset
 
+from preprocess.download import FileDownloader
 
 def get_args():
     parser = ArgumentParser()
@@ -17,6 +18,8 @@ def get_args():
     parser.add_argument('--nmr', action='store_true')
     parser.add_argument('--dataset', type=str)
 
+    parser.add_argument('--download_dir', type=str)
+
     parser.add_argument('--as_binary', help='Degenerate float output into binary output', action='store_true')
     return parser.parse_args()
 
@@ -26,6 +29,10 @@ if __name__=='__main__':
 
     if len(args.conf) > 0:
         change_configuration(args.conf)
+
+    if args.task == 'download':
+        file_downloader = FileDownloader(args.download_dir)
+        file_downloader.download(args.dataset)
 
     if args.task == 'create_all':
         create_every_alignment(wrapper=tqdm)
