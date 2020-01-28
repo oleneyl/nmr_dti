@@ -5,6 +5,9 @@ Remember only - need - values are protein, chemical, (nmr) values.
 import os
 import json
 
+from .nmr_base import get_nmr_engine
+import pubchempy as pcp
+
 IBM_DATASET_PATH = '/DATA/meson324/InterpretableDTIP/data'
 
 
@@ -39,19 +42,25 @@ class IBMDataReader(object):
         self.chemical_map = chemical_map
         self.protein_map = protein_map
 
-    def create_dataset(self):
+    def create_dataset(self, mix_nmr=False):
         def get_dataset_in_file(fname, binding):
+            if mix_nmr:
+                nmr_engine = get_nmr_engine()
             dataset = []
             with open(os.path.join(self.base_path, fname)) as f_pos:
                 for line in f_pos:
                     _, chemical_idx, __, protein_idx = line.strip('\n').split(',')
-                    dataset.append({
+                    datum = {
                         'uniprot_id': protein_idx,
                         'pubchem_id': chemical_idx,
                         'sequence': self.protein_map[protein_idx],
                         'smiles': self.chemical_map[chemical_idx],
                         'bind': binding
-                    })
+                    }
+                    if mix_nmr:
+                        datum['nmr'] = nmr_engine()
+                        pcp.Compound.from_cid(chemical_idx)
+                    dataset.append(datum)
             return dataset
 
         self.load_base_info()

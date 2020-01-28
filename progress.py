@@ -16,8 +16,8 @@ def add_progress_args(parser):
 
 def get_progress_handler(args):
     tensorboard_tracker = TensorboardTracker()
-    normal_tracker = NormalProgressHandler(args, args.log_interval, tensorboard_tracker=tensorboard_tracker)
-    return normal_tracker, tensorboard_tracker
+    logger = ProgressLogger(tensorboard_tracker)
+    return tensorboard_tracker, logger
 
 
 def get_valid_progress_handler(args):
@@ -29,6 +29,7 @@ class TensorboardTracker(object):
         self.log_dir_path = f'./.tfLog/{time.time()}'
         os.makedirs(self.log_dir_path)
         self.writer = tf.summary.FileWriter(self.log_dir_path)
+        self.saver = tf.train.Saver(tf.global_variables(), max_to_keep=1)
 
     def info(self):
         print("***  Tensorboard API is tracking output from model!  ***")
@@ -48,6 +49,8 @@ class TensorboardTracker(object):
         ])
         self.writer.add_summary(summary, global_step=global_step)
 
+    def save_model(self, model, tag):
+        model.save_weights(os.path.join(self.log_dir_path, tag))
 
 class ProgressHandler(object):
     RESERVED_KWD = ['input_sample']
@@ -98,6 +101,7 @@ class NormalProgressHandler(ProgressHandler):
         if self.use_stdout:
             print(log)
         if self.tensorboard_tracker is not None:
+            print("Using TFTracker reference..")
             with open(os.path.join(self.tensorboard_tracker.log_dir_path, "Log"), "a+") as f:
                 f.write(log+"\n")
 
@@ -122,3 +126,54 @@ class NormalProgressHandler(ProgressHandler):
             self.print_log('Accu   :', [self.logged_stats['acc'][:10]])
 
         super(NormalProgressHandler, self).emit()
+
+
+class ProgressLogger(object):
+    def __init__(self, tensorboard_tracker=None, base_metric='loss', metric_polarity=-1):
+        self.tensorboard_tracker = tensorboard_tracker
+        self.base_metric = base_metric
+        self.history = defaultdict(list)
+        self.best_result = {}
+        self.metric_polarity = metric_polarity
+
+    def print_log(self, log):
+        print(log)
+        if self.tensorboard_tracker is not None:
+            with open(os.path.join(self.tensorboard_tracker.log_dir_path, "Log"), "a+") as f:
+                f.write(log+"\n")
+
+    def report(self, prefix, parsed_result):
+        is_best = False
+        if prefix not in self.best_result or \
+                self.metric_polarity * (self.history[prefix][self.best_result[prefix]][self.base_metric] -
+                                        parsed_result[self.base_metric]) < 0:
+            self.best_result[prefix] = len(self.history[prefix])
+            is_best = True
+        self.history[prefix].append(parsed_result)
+        return is_best
+
+    def _parse(self, parsed_result):
+        log = ""
+        for metrics_names, result in parsed_result.items():
+            log += "{}: {:.3f} | ".format(metrics_names, result)
+        return log
+
+    def best(self, prefix):
+        log = f"best: {self.best_result[prefix]} : "
+        log += self._parse(self.history[prefix][self.best_result[prefix]])
+        self.print_log(log)
+
+    def emit_history(self, prefix, index):
+        self.print_log(self._parse(self.history[prefix][index]))
+
+    def best_index(self, prefix):
+        return self.best_result[prefix]
+
+    def emit(self, prefix, metrics_names, result):
+        parsed_result = {}
+        log = f"{prefix}: "
+        for i in range(len(metrics_names)):
+            parsed_result[metrics_names[i]] = result[i]
+        log += self._parse(parsed_result)
+        self.print_log(log)
+        return self.report(prefix, parsed_result)

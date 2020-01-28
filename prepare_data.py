@@ -2,9 +2,9 @@ from tqdm import tqdm
 from argparse import ArgumentParser
 
 from preprocess import create_every_alignment, create_trainable_data, change_configuration, mix_nmr, strict_split_data
-from preprocess import create_dataset_from_ibm, create_dataset_from_kiba
+from preprocess import create_dataset_from_ibm, create_dataset_from_kiba, create_dataset_from_davis
 from preprocess.pubchem import collect_many
-from preprocess.tokenize import create_protein_vocab, create_chemical_vocab
+from preprocess.tokenize import create_protein_vocab, create_chemical_vocab, create_chemical_vocab_from_dataset
 
 
 def get_args():
@@ -15,6 +15,7 @@ def get_args():
     parser.add_argument('--output_prefix', type=str)
     parser.add_argument('--split_ratio', type=float, default=0.95)
     parser.add_argument('--nmr', action='store_true')
+    parser.add_argument('--dataset', type=str)
 
     parser.add_argument('--as_binary', help='Degenerate float output into binary output', action='store_true')
     return parser.parse_args()
@@ -35,12 +36,16 @@ if __name__=='__main__':
         create_protein_vocab(args.output_prefix)
     elif args.task == 'chemical_vocab':
         create_chemical_vocab(args.output_prefix)
+    elif args.task == 'chemical_vocab_from_data':
+        create_chemical_vocab_from_dataset(args.dataset, args.output_prefix)
     elif args.task == 'mix_nmr':
         mix_nmr(args.output_prefix + '.mix_nmr', wrapper=tqdm)
     elif args.task == 'create_from_ibm':
         create_dataset_from_ibm(args.output_prefix)
     elif args.task == 'create_from_kiba':
         create_dataset_from_kiba(args.output_prefix, as_binary=args.as_binary)
+    elif args.task == 'create_from_davis':
+        create_dataset_from_davis(args.output_prefix, as_binary=args.as_binary)
     elif args.task == 'get_pubchem':
         print('\n Start fetching pubchem data \n')
         collect_many(10000*10000+1, 30000*10000, task_pool_size=6)

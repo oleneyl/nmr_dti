@@ -5,7 +5,7 @@ from .trainable import strict_splitting, create_dataset
 from .kernel import get_conf, change_configuration
 from .data_reader import JSONDataReader
 from .ibm_dataset import get_ibm_data_reader
-from .kiba import get_kiba_dataset
+from .kiba import get_kiba_dataset, get_davis_dataset
 
 from .data_conf import add_data_config
 import random
@@ -70,7 +70,8 @@ def strict_split_data(split_ratio, save_dir, wrapper=None, use_nmr=False):
 
     JSONDataReader.save_from_raw(train_set, os.path.join(save_dir, 'train'))
     JSONDataReader.save_from_raw(valid_set, os.path.join(save_dir, 'valid'))
-
+    add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
+                    data_read_type='line_json', origin='HMDB', includes_nmr=use_nmr)
 
 def create_dataset_from_ibm(save_dir, wrapper=None):
     # This action do not includes any NMR data inside dataset..
@@ -99,4 +100,17 @@ def create_dataset_from_kiba(save_dir, wrapper=None, as_binary=False):
 
     add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
                     data_read_type='line_json', origin='kiba', includes_nmr=False, test_set_name='test',
+                    as_binary=as_binary)
+
+
+def create_dataset_from_davis(save_dir, wrapper=None, as_binary=False):
+    train, valid, test = get_davis_dataset(as_binary=as_binary)
+    # No negative data mixing needed
+    os.makedirs(save_dir, exist_ok=True)
+    JSONDataReader.save_from_raw(train, os.path.join(save_dir, 'train'))
+    JSONDataReader.save_from_raw(valid, os.path.join(save_dir, 'valid'))
+    JSONDataReader.save_from_raw(test, os.path.join(save_dir, 'test'))
+
+    add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
+                    data_read_type='line_json', origin='davis', includes_nmr=False, test_set_name='test',
                     as_binary=as_binary)

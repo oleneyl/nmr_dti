@@ -1,6 +1,6 @@
 from .base import BaseModel
 import tensorflow as tf
-from .attention import Encoder, VectorEncoder
+from .attention import Encoder, VectorEncoder, VectorDecoder
 
 """
 ProteinModel :: get Input as indices_array, return Tensor with shape [None, args.sequential_dense]
@@ -35,7 +35,7 @@ class RNNProteinModel(BaseModel):
 
 
 class AttentionProteinModel(BaseModel):
-    def __init__(self, args, vocab_size, vectorized=False):
+    def __init__(self, args, vocab_size, vectorized=False, export_level="end"):
         super(AttentionProteinModel, self).__init__(args)
         self.vocab_size = vocab_size
 
@@ -57,11 +57,13 @@ class AttentionProteinModel(BaseModel):
         self.dense = tf.keras.layers.Dense(self.args.sequential_dense, activation='relu')
         self.batch_norm = tf.keras.layers.BatchNormalization()
         self.dropout = tf.keras.layers.Dropout(self.args.concat_dropout)
+        self.export_level = export_level
 
     def call(self, input_tensor, training=None):
         output = self.encoder(input_tensor, mask=None, training=training)
-        output = self.flatten(output)
-        output = self.dense(output)
-        output = self.batch_norm(output, training=training)
-        output = self.dropout(output, training=training)
+        if self.export_level == 'end':
+            output = self.flatten(output)
+            output = self.dense(output)
+            output = self.batch_norm(output, training=training)
+            output = self.dropout(output, training=training)
         return output

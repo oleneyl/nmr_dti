@@ -17,9 +17,11 @@ def adapter_args(parser):
     group.add_argument('--max_ppm', type=float, default=10.0)
     group.add_argument('--protein_vocab_size', type=int, default=1000)
     group.add_argument('--chemical_vocab_size', type=int, default=1000)
+    group.add_argument('--ignore_nmr', type=float, default=0.5)
 
 
-def get_adapter(args):
+
+def get_adapter(args, training=True):
     if args.protein_vocab == '__base__':
         protein_vocab = DTAProteinVocab()
     else:
@@ -31,18 +33,20 @@ def get_adapter(args):
         chemical_vocab = SentencePieceVocab(args.chemical_vocab)
 
     return NMRAdapter(protein_vocab, chemical_vocab, nmr_array_size=args.nmr_array_size,
-                      min_ppm=args.min_ppm, max_ppm=args.max_ppm)
+                      min_ppm=args.min_ppm, max_ppm=args.max_ppm, ignore_nmr = args.ignore_nmr, training=training)
 
 
 class NMRAdapter(object):
     def __init__(self, protein_vocab, chemical_vocab, nmr_array_size=1000,
                  min_ppm=0,
-                 max_ppm=10):
+                 max_ppm=10, ignore_nmr=0.0, training=True):
         self.protein_vocab = protein_vocab
         self.chemical_vocab = chemical_vocab
         self.nmr_array_size = nmr_array_size
         self.min_ppm = min_ppm
         self.max_ppm = max_ppm
+        self.ignore_nmr = ignore_nmr
+        self.training = training
 
     @classmethod
     def normalize_nmr(cls, nmr_data, nmr_min, nmr_max, min_ppm, max_ppm, size, h_count=1):
@@ -68,7 +72,10 @@ class NMRAdapter(object):
         mol = Chem.AddHs(mol)
         h_count = len([i for i in mol.GetAtoms() if i.GetAtomicNum() == 1])
         if 'nmr_freq' in datum:
-            nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
+            if self.training and np.random.random() < self.ignore_nmr:
+                nmr_values = np.zeros([self.nmr_array_size])
+            else:
+                nmr_values = self.normalize_nmr(datum['nmr_freq'], datum['nmr_rg'][0], datum['nmr_rg'][1],
                                         self.min_ppm, self.max_ppm, self.nmr_array_size, h_count=h_count)
         else:
             nmr_values = np.zeros([self.nmr_array_size])

@@ -4,7 +4,7 @@ import os
 
 from options import get_args
 from models import get_model
-from progress import get_progress_handler, get_valid_progress_handler, TensorboardTracker
+from progress import get_progress_handler, ProgressLogger
 from preprocess.data_utils.data_loader import get_data_loader
 from learning_rate import get_learning_rate_scheduler
 from pprint import pprint
@@ -31,12 +31,32 @@ def cindex_score(y_true, y_pred):
 
 
 def train(args):
+    def create_modal_mask(datum):
+        chemical_length = args.chemical_sequence_length
+        nmr_length = args.modal_size - chemical_length
+        _label, _protein, _chemical, _nmr = datum
+        mask_list = []
+        for i in range(_nmr.shape[0]):
+            nmr_piece = _nmr[i]
+            if np.sum(nmr_piece) > 1e-8:  # data exist
+                mask_list.append(np.zeros([1, chemical_length + nmr_length, chemical_length + nmr_length]))
+            else:
+                mask = np.zeros([1, chemical_length, chemical_length])
+                mask = np.concatenate([np.ones([1, chemical_length, nmr_length]), mask], axis=2)
+                mask = np.concatenate([np.ones([1, nmr_length, chemical_length + nmr_length]), mask], axis=1)
+                mask_list.append(mask)
+         
+        mask = np.concatenate(mask_list, axis=0)
+        mask = np.expand_dims(mask, axis=1)
+        return mask
+    
     def create_input_sample(datum):
         _label, _protein, _chemical, _nmr = datum
         if args.nmr:
-            return (_protein, _chemical, _nmr), _label
+            modal_mask = create_modal_mask(datum)
+            return [_protein, _chemical, _nmr, modal_mask], _label
         else:
-            return (_protein, _chemical), _label
+            return [_protein, _chemical], _label       
 
     print("***  Run environment  ***")
     pprint(args)
@@ -70,7 +90,7 @@ def train(args):
 
     # Summary
     model.summary()
-    progress_handler, tensorboard = get_progress_handler(args)
+    tensorboard, logger = get_progress_handler(args)
     tensorboard.info()  # Print Information what now tensorboard is tracking
 
     metrics_names = model.metrics_names
@@ -86,22 +106,23 @@ def train(args):
             result = model.train_on_batch(xs, ys)
             global_step += 1
             if idx % args.log_interval == 0:
-                log = "Training: "
-                for i in range(len(metrics_names)):
-                    log += "{}: {:.3f} | ".format(metrics_names[i], result[i])
-                print(log)
+                logger.emit("Training", metrics_names, result)
                 tensorboard.create_summary(global_step, result, model, prefix='train')
 
         for dataset, set_type in ((valid_data, 'valid'), (test_data, 'test')):
             for datum in dataset:
                 xs, ys = create_input_sample(datum)
                 result = model.test_on_batch(xs, ys, reset_metrics=False)
-            log = f"{set_type}: "
-            for i in range(len(metrics_names)):
-                log += "{}: {:.3f} | ".format(metrics_names[i], result[i])
-            print(log)
+            is_best = logger.emit(set_type, metrics_names, result)
+            # if is_best:
+            #    tensorboard.save_model(model, 'best')
             tensorboard.create_summary(global_step, result, model, prefix=set_type)
             model.reset_metrics()
+
+        logger.best("valid")
+
+    logger.emit_history("test", logger.best_index("valid"))
+    tensorboard.save_model(model, 'last')
 
 if __name__ == '__main__':
     train(get_args())

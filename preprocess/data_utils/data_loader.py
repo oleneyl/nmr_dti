@@ -42,19 +42,22 @@ def get_data_loader(args):
                                           batch_size=args.batch_size,
                                           protein_sequence_length=args.protein_sequence_length,
                                           chemical_sequence_length=args.chemical_sequence_length,
-                                          adapter=get_adapter(args))
+                                          adapter=get_adapter(args, training=True),
+                                          training=True)
 
     valid_data_loader = GeneralDataLoader(valid, args.nmr_dir,
                                           batch_size=args.batch_size,
                                           protein_sequence_length=args.protein_sequence_length,
                                           chemical_sequence_length=args.chemical_sequence_length,
-                                          adapter=get_adapter(args))
+                                          adapter=get_adapter(args, training=True),
+                                          training=True)
 
     test_data_loader = GeneralDataLoader(test, args.nmr_dir,
                                          batch_size=args.batch_size,
                                          protein_sequence_length=args.protein_sequence_length,
                                          chemical_sequence_length=args.chemical_sequence_length,
-                                         adapter=get_adapter(args))
+                                         adapter=get_adapter(args, training=False),
+                                         training=False)
 
     return train_data_loader, valid_data_loader, test_data_loader
 
@@ -64,6 +67,7 @@ class GeneralDataLoader(object):
                  protein_sequence_length=1000,
                  chemical_sequence_length=1000,
                  adapter=lambda x: x,
+                 training=True
                  ):
         self.batch_size = batch_size
         self.data_file_name = data_file_name
@@ -71,6 +75,7 @@ class GeneralDataLoader(object):
         self.protein_sequence_length = protein_sequence_length
         self.chemical_sequence_length = chemical_sequence_length
         self.adapter = adapter
+        self.training = training
 
     def reset(self):
         self.data_reader = JSONDataReader(self.data_file_name)
