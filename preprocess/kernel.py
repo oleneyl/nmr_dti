@@ -3,7 +3,7 @@ import os
 import xml.etree.ElementTree as elemTree
 import pandas as pd
 
-CONFIGURATION_FILE_NAME='configuration.json'
+CONFIGURATION_FILE_NAME = 'configuration.json'
 
 
 def change_configuration(conf_file_name):
@@ -15,6 +15,17 @@ def get_conf():
     file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIGURATION_FILE_NAME)
     with open(file_path) as f:
         return json.load(f)
+
+
+def edit_conf(kwd, value):
+    """
+    This function will PERMANANTLY change referring configuration.
+    This function only be used when downloading raw file.
+    """
+    current_conf = get_conf()
+    current_conf[kwd] = value
+    with open(CONFIGURATION_FILE_NAME, 'w') as f:
+        json.dump(current_conf, f, indent=4, ensure_ascii=False)
 
 
 class XMLManager(object):
