@@ -1,7 +1,7 @@
 from .hmdb import create_hmdb_alignment
 from .uniprot import create_uniprot_alignment
-from .trainable import join_hmdb_and_uniprot, create_negatives, mix_nmr_into_hmdb
-from .trainable import strict_splitting, create_dataset
+from .tool import join_hmdb_and_uniprot, create_negatives, mix_nmr_into_hmdb
+from .tool import strict_splitting, create_dataset
 from .kernel import get_conf, change_configuration
 from .data_reader import JSONDataReader
 from preprocess.processor.ibm_dataset import get_ibm_data_reader
