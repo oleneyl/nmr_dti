@@ -32,42 +32,38 @@ def shuffle_train_valid_split(data, split_ratio):
     return data[:split_point], data[split_point:]
 
 
-def create_trainable_data(split_ratio, wrapper=None, use_nmr=False):
-    conf = get_conf()
-    hmdb_file = conf['hmdb']['nmr_endpoint'] if use_nmr else conf['hmdb']['export_endpoint']
-    positives = join_hmdb_and_uniprot(hmdb_file, conf['uniprot']['export_endpoint'],
-                                      wrapper=wrapper)
-    negatives = create_negatives(hmdb_file, conf['uniprot']['export_endpoint'],
-                                 size=len(positives), wrapper=wrapper)
-
-    train_data = positives + negatives
-
-    train, valid = shuffle_train_valid_split(train_data, split_ratio)
-    JSONDataReader.save_from_raw(train, conf['trainable']['train'])
-    JSONDataReader.save_from_raw(valid, conf['trainable']['valid'])
-
-
 def mix_positive_and_negative(pos, neg):
+    """
+    Shuffle positive data and negative data.
+    """
     li = pos + neg
     random.shuffle(li)
     return li
 
 
 def strict_split_data(split_ratio, save_dir, wrapper=None, use_nmr=False):
+    """
+    Create dataset as splitted <strictly>, which ensure given datasets do not have any overlap
+    of protein or chemical.
+    """
     os.makedirs(save_dir, exist_ok=True)
     conf = get_conf()
     hmdb_file = conf['hmdb']['nmr_endpoint'] if use_nmr else conf['hmdb']['export_endpoint']
     hmdb_data = JSONDataReader(hmdb_file)
     uniprot_data = JSONDataReader(conf['uniprot']['export_endpoint'])
 
+    # Strict splitting
     print('Start strict splitting..')
     train_tuple, valid_tuple = strict_splitting(hmdb_data, uniprot_data, split_ratio=split_ratio, wrapper=wrapper)
     print('Strict splitting done!')
+
+    # Mix positive and negative(not-positive) data inside
     print(f'Train chemicals {len(train_tuple[0])}, Validation chemicals {len(valid_tuple[0])}')
     train_set = mix_positive_and_negative(*create_dataset(*train_tuple, negative_ratio=1, wrapper=wrapper))
     valid_set = mix_positive_and_negative(*create_dataset(*valid_tuple, negative_ratio=1, wrapper=wrapper))
     print(f'Training set {len(train_set)}, Validation set {len(valid_set)}')
 
+    # Save dataset
     JSONDataReader.save_from_raw(train_set, os.path.join(save_dir, 'train'))
     JSONDataReader.save_from_raw(valid_set, os.path.join(save_dir, 'valid'))
     add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
