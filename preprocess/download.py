@@ -9,6 +9,8 @@ from .kernel import get_conf, edit_conf
 DEEPDTA_DOWNLOAD_LINK = 'https://drive.google.com/u/0/uc?id=1sfUlAt0H0YSrpDr9nuMlmWLOsn3yMrTx&export=download'
 DEEPDTA_DIR_NAME = 'DeepDTA'
 
+IBM_DOWNLOAD_LINK = 'https://drive.google.com/u/0/uc?id=1KG2T0Tl2bqrRXjooE383YrVNYqdbLtPr&export=download'
+IBM_DIR_NAME = 'InterpretableDTIP'
 
 def download_file(link, fname):
     command = ['wget', '-O', fname, link]
@@ -20,15 +22,18 @@ class FileDownloader:
         self.base_dir = base_dir
         os.makedirs(base_dir, exist_ok=True)
 
-    def download_kiba(self):
-        tarname = os.path.join(self.base_dir, DEEPDTA_DIR_NAME + '.tar.gz')
-        dirname = os.path.join(self.base_dir, DEEPDTA_DIR_NAME)
-        download_file(DEEPDTA_DOWNLOAD_LINK, tarname)
+    def _download_and_unzip(self, name, download_link):
+        tarname = os.path.join(self.base_dir, name + '.tar.gz')
+        dirname = os.path.join(self.base_dir, name)
+        download_file(download_link, tarname)
         subprocess.call(['tar', '-xvzf', tarname])
+        return dirname
+
+    def download_kiba(self):
+        dirname = self._download_and_unzip(DEEPDTA_DIR_NAME, DEEPDTA_DOWNLOAD_LINK)
         edit_conf('kiba', os.path.join(dirname, 'kiba'))
         edit_conf('davis', os.path.join(dirname, 'davis'))
 
-
-if __name__ == '__main__':
-    downloader = FileDownloader('.')
-    downloader.download_kiba()
+    def download_ibm(self):
+        dirname = self._download_and_unzip(DEEPDTA_DIR_NAME, DEEPDTA_DOWNLOAD_LINK)
+        edit_conf('ibm', os.path.join(dirname, 'data'))
