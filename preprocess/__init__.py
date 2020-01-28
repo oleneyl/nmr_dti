@@ -4,8 +4,8 @@ from .trainable import join_hmdb_and_uniprot, create_negatives, mix_nmr_into_hmd
 from .trainable import strict_splitting, create_dataset
 from .kernel import get_conf, change_configuration
 from .data_reader import JSONDataReader
-from .ibm_dataset import get_ibm_data_reader
-from .kiba import get_kiba_dataset, get_davis_dataset
+from preprocess.processor.ibm_dataset import get_ibm_data_reader
+from preprocess.processor.kiba import get_kiba_dataset, get_davis_dataset
 
 from .data_conf import add_data_config
 import random
@@ -73,6 +73,7 @@ def strict_split_data(split_ratio, save_dir, wrapper=None, use_nmr=False):
     add_data_config(save_dir, train_set_name='train', valid_set_name='valid',
                     data_read_type='line_json', origin='HMDB', includes_nmr=use_nmr)
 
+
 def create_dataset_from_ibm(save_dir, wrapper=None):
     # This action do not includes any NMR data inside dataset..
     # This dataset will only for reproduction / baseline check
@@ -90,10 +91,15 @@ def create_dataset_from_ibm(save_dir, wrapper=None):
                     data_read_type='line_json', origin='IBM', includes_nmr=False, test_set_name='test')
 
 
+
 def create_dataset_from_kiba(save_dir, wrapper=None, as_binary=False):
+    """
+    Create dataset from KIBA
+    """
     train, valid, test = get_kiba_dataset(as_binary=as_binary)
     # No negative data mixing needed
     os.makedirs(save_dir, exist_ok=True)
+
     JSONDataReader.save_from_raw(train, os.path.join(save_dir, 'train'))
     JSONDataReader.save_from_raw(valid, os.path.join(save_dir, 'valid'))
     JSONDataReader.save_from_raw(test, os.path.join(save_dir, 'test'))
@@ -104,9 +110,13 @@ def create_dataset_from_kiba(save_dir, wrapper=None, as_binary=False):
 
 
 def create_dataset_from_davis(save_dir, wrapper=None, as_binary=False):
+    """
+    Create dataset from DAVIS
+    """
     train, valid, test = get_davis_dataset(as_binary=as_binary)
     # No negative data mixing needed
     os.makedirs(save_dir, exist_ok=True)
+
     JSONDataReader.save_from_raw(train, os.path.join(save_dir, 'train'))
     JSONDataReader.save_from_raw(valid, os.path.join(save_dir, 'valid'))
     JSONDataReader.save_from_raw(test, os.path.join(save_dir, 'test'))
