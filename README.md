@@ -8,6 +8,9 @@ NMR_infer
 - numpy
 - tqdm
 - sentencepieece
+- requests
+- pandas
+- pubchempy
 
 # Structure
 

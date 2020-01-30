@@ -5,7 +5,7 @@ Remember only - need - values are protein, chemical, (nmr) values.
 import os
 import json
 
-from .nmr_base import get_nmr_engine
+from preprocess.nmr_base import get_nmr_engine
 import pubchempy as pcp
 
 IBM_DATASET_PATH = '/DATA/meson324/InterpretableDTIP/data'

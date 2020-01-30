@@ -3,7 +3,7 @@ import os
 import xml.etree.ElementTree as elemTree
 import pandas as pd
 
-CONFIGURATION_FILE_NAME='configuration.json'
+CONFIGURATION_FILE_NAME = 'configuration.json'
 
 
 def change_configuration(conf_file_name):
@@ -11,10 +11,26 @@ def change_configuration(conf_file_name):
     CONFIGURATION_FILE_NAME = conf_file_name
 
 
+def get_conf_file():
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIGURATION_FILE_NAME)
+
+
 def get_conf():
-    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), CONFIGURATION_FILE_NAME)
+    file_path = get_conf_file()
     with open(file_path) as f:
         return json.load(f)
+
+
+def edit_conf(dict_opt):
+    """
+    This function will PERMANANTLY change referring configuration.
+    This function only be used when downloading raw file.
+    """
+    current_conf = get_conf()
+    for kwd in dict_opt:
+        current_conf[kwd] = dict_opt[kwd]
+    with open(get_conf_file(), 'w') as f:
+        json.dump(current_conf, f, indent=4, ensure_ascii=False)
 
 
 class XMLManager(object):
@@ -110,6 +126,15 @@ class AbstractFileReader(AbstractIterable):
                 except Exception as e:
                     print(datum)
                     raise
+
+    @classmethod
+    def save_train_valid_test(cls, train, valid, test, save_dir):
+        """
+        Shortcut for train-valid-test tuple dataset saving
+        """
+        cls.save_from_raw(train, os.path.join(save_dir, 'train'))
+        cls.save_from_raw(valid, os.path.join(save_dir, 'valid'))
+        cls.save_from_raw(test, os.path.join(save_dir, 'test'))
 
     def __iter__(self):
         if len(self._cache) > 0:
