@@ -1,6 +1,6 @@
-data_utils
+/preprocess
 ===========
-Data loading tools for network training / preprocessing.
+Data loading tools for network training and preprocessing.
 
 # XMLManager
 
@@ -18,3 +18,10 @@ DataLoader read and iterate information from `DATA`, not `XML`.
 
 1. Read data from XML by `XMLManager` and dump as file
 2. Use `DataLoader` to read data from dumped files.
+
+
+# Supporting Datasets
+
+- KIBA
+- DAVIS
+- IBM
