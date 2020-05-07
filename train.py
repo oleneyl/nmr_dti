@@ -12,6 +12,7 @@ from sklearn.metrics import roc_auc_score
 from tensorflow.python.keras.callbacks import TensorBoard
 import time
 
+
 def auroc(y_true, y_pred):  # Should be calculated over whole batch
     return tf.py_func(roc_auc_score, (y_true, y_pred), tf.double)
 
@@ -27,14 +28,15 @@ def cindex_score(y_true, y_pred):
     g = tf.reduce_sum(tf.multiply(g, f))
     f = tf.reduce_sum(f)
 
-    return tf.where(tf.equal(g, 0), 0.0, g/f) #select
+    return tf.where(tf.equal(g, 0), 0.0, g/f)
 
 
 def train(args):
-    def create_modal_mask(datum):
+    def create_modal_mask(_datum):
+        # Create mask to disable NMR input and attention to NMR part.
         chemical_length = args.chemical_sequence_length
         nmr_length = args.modal_size - chemical_length
-        _label, _protein, _chemical, _nmr = datum
+        _label, _protein, _chemical, _nmr = _datum
         mask_list = []
         for i in range(_nmr.shape[0]):
             nmr_piece = _nmr[i]
@@ -50,10 +52,10 @@ def train(args):
         mask = np.expand_dims(mask, axis=1)
         return mask
     
-    def create_input_sample(datum):
-        _label, _protein, _chemical, _nmr = datum
+    def create_input_sample(_datum):
+        _label, _protein, _chemical, _nmr = _datum
         if args.nmr:
-            modal_mask = create_modal_mask(datum)
+            modal_mask = create_modal_mask(_datum)
             return [_protein, _chemical, _nmr, modal_mask], _label
         else:
             return [_protein, _chemical], _label       
@@ -69,9 +71,11 @@ def train(args):
     result_pl = tf.placeholder(shape=[None, 1], dtype=tf.float32, name='result_pl')
     global_step = tf.Variable(0, trainable=False, name='global_step')
 
+    # Create model
     drug_target_interaction = get_model(args)
-
     model = drug_target_interaction.create_keras_model()
+
+    # Compile model with metrics
     if args.as_score:
         model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
                       loss='mean_squared_error',
@@ -96,19 +100,24 @@ def train(args):
     metrics_names = model.metrics_names
     global_step = 0
 
+    # Experiment
     for epoch in range(1, args.epoch + 1):
         model.reset_metrics()
         train_data, valid_data, test_data = get_data_loader(args)
+
         print(f'Epoch {epoch} start')
 
+        # Train
         for idx, datum in enumerate(train_data):
             xs, ys = create_input_sample(datum)
+            print(ys)
             result = model.train_on_batch(xs, ys)
             global_step += 1
             if idx % args.log_interval == 0:
                 logger.emit("Training", metrics_names, result)
                 tensorboard.create_summary(global_step, result, model, prefix='train')
 
+        # Validation / Test
         for dataset, set_type in ((valid_data, 'valid'), (test_data, 'test')):
             for datum in dataset:
                 xs, ys = create_input_sample(datum)
@@ -123,6 +132,7 @@ def train(args):
 
     logger.emit_history("test", logger.best_index("valid"))
     tensorboard.save_model(model, 'last')
+
 
 if __name__ == '__main__':
     train(get_args())
