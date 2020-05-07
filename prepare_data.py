@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 
 from preprocess import create_every_alignment, change_configuration, mix_nmr, strict_split_data
 from preprocess import create_dataset_from_ibm, create_dataset_from_kiba, create_dataset_from_davis
-from preprocess.pubchem import collect_many
+from preprocess.parser.pubchem import collect_many
 from preprocess.tokenizer import create_protein_vocab, create_chemical_vocab, create_chemical_vocab_from_dataset
 
 from preprocess.download import FileDownloader
