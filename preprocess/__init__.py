@@ -1,5 +1,5 @@
 from preprocess.parser.hmdb import create_hmdb_alignment
-from .uniprot import create_uniprot_alignment
+from preprocess.parser.uniprot import create_uniprot_alignment
 from .tool import join_hmdb_and_uniprot, create_negatives, mix_nmr_into_hmdb
 from .tool import strict_splitting, create_dataset
 from .kernel import get_conf, change_configuration

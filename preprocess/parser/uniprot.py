@@ -1,4 +1,4 @@
-from .kernel import get_conf, XMLManager
+from preprocess.kernel import get_conf, XMLManager
 
 
 def create_uniprot_alignment(wrapper=None):
