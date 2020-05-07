@@ -1,6 +1,6 @@
 import json
 from .kernel import AbstractFileReader
-from .nmr_base import NMRQueryEngine
+from preprocess.parser.nmr_base import NMRQueryEngine
 
 
 class LineDataReader(AbstractFileReader):
