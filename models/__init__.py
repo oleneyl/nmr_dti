@@ -35,6 +35,16 @@ def add_model_args(parser):
     group.add_argument('--modal_size', type=int, default=191)
 
 
+def create_sequence_model(args, model_type, vocab_size, export_level='end'):
+    if model_type == 'gru':
+        submodel = RNNProteinModel(args, vocab_size)
+    elif model_type == 'att':
+        submodel = AttentionProteinModel(args, vocab_size, export_level=export_level)
+    elif model_type == 'cnn':
+        submodel = SequentialCNNModel(args, vocab_size)
+    return submodel
+
+
 class BaseDTIModel(object):
     def __init__(self, args, export_level='end'):
         self._protein_encoded = tf.keras.Input(shape=[args.protein_sequence_length], dtype=tf.int32,
@@ -50,25 +60,13 @@ class BaseDTIModel(object):
         self.nmr_model = None
 
         with tf.name_scope('protein'):
-            if args.protein_model == 'gru':
-                self.protein_model = RNNProteinModel(args, args.protein_vocab_size)
-            elif args.protein_model == 'att':
-                self.protein_model = AttentionProteinModel(args, args.protein_vocab_size, export_level=export_level)
-            elif args.protein_model == 'cnn':
-                self.protein_model = SequentialCNNModel(args, args.protein_vocab_size)
+            self.protein_model = create_sequence_model(args, args.protein_vocab_size, export_level=export_level)(self._protein_encoded)
         with tf.name_scope('chemical'):
             if args.nmr:
                 self.nmr_model = NMR_Infuse(args, args.chemical_vocab_size)
                 self.chemical_model = self.nmr_model(self._nmr_array, chemical_tensor=self._smiles_encoded, modal_mask=self._modal_mask)
             else:
-                if args.chemical_model == 'gru':
-                    self.chemical_model = RNNProteinModel(args, args.chemical_vocab_size)
-                elif args.chemical_model == 'att':
-                    self.chemical_model = AttentionProteinModel(args, args.chemical_vocab_size, export_level=export_level)
-                elif args.chemical_model == 'cnn':
-                    self.chemical_model = SequentialCNNModel(args, args.chemical_vocab_size)
-                self.chemical_model = self.chemical_model(self._smiles_encoded)
-        self.protein_model = self.protein_model(self._protein_encoded)
+                self.chemical_model = create_sequence_model(args, args.chemical_vocab_size, export_level=export_level)(self._smiles_encoded)
 
     def inputs(self):
         if self.args.nmr:
@@ -154,40 +152,6 @@ class AttentiveDTIModel(BaseDTIModel):
         embedding = tf.keras.layers.Dense(512, name='concat_dense_last', activation='relu')(embedding)
         embedding = tf.keras.layers.Dense(1, name='concat_dense_score', kernel_initializer='normal')(embedding)
         embedding = Bias(self.args.output_bias)(embedding)
-        return embedding
-
-
-class AttDecModel(BaseDTIModel):
-    def predict_dti(self):
-        protein_detect = self.protein_model.encoding
-        chemical_detect = self.chemical_model.encoding
-
-        # Cross - attention
-        protein_decoder = DecoderLayerIndiv(self.args.transformer_model_dim,
-                                            self.args.transformer_num_heads,
-                                            self.args.transformer_hidden_dimension,
-                                            rate=self.args.transformer_dropout_rate)
-        chemical_decoder = DecoderLayerIndiv(self.args.transformer_model_dim,
-                                             self.args.transformer_num_heads,
-                                             self.args.transformer_hidden_dimension,
-                                             rate=self.args.transformer_dropout_rate)
-        protein_detect_1, _, __ = protein_decoder(protein_detect, chemical_detect, self.is_train, None, None)
-        chemical_detect_1, _, __ = chemical_decoder(chemical_detect, protein_detect, self.is_train, None, None)
-
-        # Flatten
-        protein_detect = tf.keras.layers.Flatten()(protein_detect_1)
-        protein_detect = tf.keras.layers.Dense(self.args.sequential_dense, activation='relu')(protein_detect)
-
-        chemical_detect = tf.keras.layers.Flatten()(chemical_detect_1)
-        chemical_detect = tf.keras.layers.Dense(self.args.sequential_dense, activation='relu')(chemical_detect)
-
-        embedding = tf.concat([protein_detect, chemical_detect, self.chemical_model.get_output()], 1)
-        embedding = tf.keras.layers.Dense(self.args.concat_hidden_layer_size, activation='relu',
-                                          name='concat_dense_1')(embedding)
-        embedding = tf.keras.layers.Dropout(self.args.concat_dropout)(embedding, training=self.is_train)
-        embedding = tf.keras.layers.BatchNormalization()(embedding, training=self.is_train)
-        dense_last = tf.keras.layers.Dense(1, name='concat_dense_last')
-        embedding = dense_last(embedding)
         return embedding
 
 
