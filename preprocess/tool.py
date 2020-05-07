@@ -76,26 +76,50 @@ def strict_splitting(hmdb_data, uniprot_data, split_ratio=0.5, wrapper=None):
     hmdb_data = list(hmdb_data)
     uniprot_data = list(uniprot_data)
 
+    # Split hmdb data as given ratio.
     split_point = int(len(hmdb_data)*split_ratio)
-    upper_chemical = hmdb_data[:split_point]
-    lower_chemical = hmdb_data[split_point:]
 
-    protein_over_upper = []
-    for datum in upper_chemical:
-        protein_over_upper += datum['protein_associations']
+    chemical_split = [
+        hmdb_data[:split_point],
+        hmdb_data[split_point:]
+    ]
 
-    protein_over_lower = []
-    for datum in lower_chemical:
-        protein_over_lower += datum['protein_associations']
+    # upper_chemical = hmdb_data[:split_point]
+    # lower_chemical = hmdb_data[split_point:]
 
-    protein_over_upper = set(protein_over_upper)
-    protein_over_lower = set(protein_over_lower)
-    protein_over_lower = protein_over_lower - protein_over_upper
+    protein_split = []
 
-    upper_protein = [x for x in uniprot_data if x['uniprot_id'] in protein_over_upper]
-    lower_protein = [x for x in uniprot_data if x['uniprot_id'] in protein_over_lower]
+    for chem_sp in chemical_split:
+        protein_set = []
+        for datum in chem_sp:
+            protein_set += datum['protein_associations']
+        protein_split.append(protein_set)
 
-    return (upper_chemical, upper_protein), (lower_chemical, lower_protein)
+    # protein_over_upper = []
+    # for datum in upper_chemical:
+    #     protein_over_upper += datum['protein_associations']
+
+    # protein_over_lower = []
+    # for datum in lower_chemical:
+    #     protein_over_lower += datum['protein_associations']
+
+    protein_split = [set(x) for x in protein_split]
+    exclusive_protein_split = []
+    for idx, protein_set in protein_split:
+        for ex_set in exclusive_protein_split:
+            protein_split -= ex_set
+        exclusive_protein_split.append(protein_split)
+
+    # protein_over_upper = set(protein_over_upper)
+    # protein_over_lower = set(protein_over_lower)
+    # protein_over_lower = protein_over_lower - protein_over_upper
+
+    # upper_protein = [x for x in uniprot_data if x['uniprot_id'] in protein_over_upper]
+    # lower_protein = [x for x in uniprot_data if x['uniprot_id'] in protein_over_lower]
+
+    datasets = [(chemical_split[idx], [x for x in uniprot_data if x['uniprot_id'] in pt]) for (idx, pt) in exclusive_protein_split]
+
+    return datasets
 
 
 def create_negatives(hmdb_aligned_file, uniprot_aligned_file, size=100, seed=None, wrapper=None):
