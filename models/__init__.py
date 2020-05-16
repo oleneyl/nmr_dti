@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .cnn import NMR_Infuse, SequentialCNNModel
+from models.modules.cnn import NMR_Infuse, SequentialCNNModel
 from .sequence import RNNProteinModel, AttentionProteinModel, transformer_args
 from models.modules.attention import DecoderLayer, VectorDecoder, EncoderLayer
 

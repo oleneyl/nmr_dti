@@ -1,10 +1,10 @@
 import tensorflow as tf
-from .base import BaseModel
-from .sequence import AttentionProteinModel
+from models.base import BaseModel
+from models.sequence import AttentionProteinModel
 from models.modules.attention import Encoder, VectorEncoder
 
 
-class SequentialCNNModel(BaseModel):
+class SequentialCNNMoel(BaseModel):
     def __init__(self, args, vocab_size):
         super(SequentialCNNModel, self).__init__(args)
         self.vocab_size = vocab_size
