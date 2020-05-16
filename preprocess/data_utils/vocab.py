@@ -33,6 +33,17 @@ class SentencePieceVocab(Vocab):
     def decode(self, indices_array):
         return self.sp.decode_ids(indices_array)
 
+class NMRSMilesVocab(Vocab):
+    def __init__(self):
+        self.chars = 'C1()2=ON[+]-c345oSL#n6PHsF.p78'
+        self.reverse_map = {x: idx for idx, x in enumerate(self.chars)}
+        self.ENDL = len(self.chars)
+
+    def encode(self, sequence):
+        return [self.reverse_map[ch] for ch in sequence] + [self.ENDL]
+
+    def decode(self, indices_array):
+        return ''.join([self.chars[idx] for idx in indices_array])
 
 class SimpleSMILESVocab(Vocab):
     def __init__(self):
