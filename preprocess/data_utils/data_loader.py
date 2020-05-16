@@ -1,10 +1,11 @@
 from ..data_reader import JSONDataReader, NMRDataReader, RestrictiveNMRDataReader
 from ..kernel import get_conf
+from ..nmr_prediction_dataset import NMRPredictionDatasetReaer
 from .numpy_adapter import get_adapter
 import numpy as np
 import os
 import json
-
+from .vocab import NMRSMilesVocab
 
 def data_loader_args(parser):
     group = parser.add_argument_group('data_loader')
@@ -62,6 +63,43 @@ def get_data_loader(args):
     return train_data_loader, valid_data_loader, test_data_loader
 
 
+class NMRDataLoader(object):
+    def __init__(self, data_file_name, data_type, batch_size=1,
+                 chemical_sequence_length=256,
+                 training=True):
+        self.batch_size = batch_size
+        self.data_file_name = data_file_name
+        self.data_reader = NMRPredictionDatasetReaer(data_file_name, data_type)
+        self.chemical_sequence_length = chemical_sequence_length
+        self.training = training
+        self.vocab = NMRSMilesVocab()
+
+    def reset(self):
+        self.data_reader = NMRPredictionDatasetReaer(self.data_file_name)
+
+    def __iter__(self):
+        batch = []
+        for datum in self.data_reader:
+            if datum is None:
+                continue
+            else:
+                smiles, nmr_value_list, mask = datum
+
+            smiles = self.vocab.encode(smiles)
+
+            smiles = smiles + [0 for x in range(self.chemical_sequence_length)]
+            nmr_value_list = nmr_value_list + [0.0 for x in range(self.chemical_sequence_length)]
+            mask = mask + [0.0 for x in range(self.chemical_sequence_length)]
+
+            batch.append([[len(smiles)],
+                          smiles[:self.chemical_sequence_length],
+                          nmr_value_list[:self.chemical_sequence_length],
+                          mask[:self.chemical_sequence_length]])
+
+            if len(batch) == self.batch_size:
+                yield [np.array(x) for x in zip(*batch)]
+                batch = []
+
 class GeneralDataLoader(object):
     def __init__(self, data_file_name, nmr_dir, batch_size=1,
                  protein_sequence_length=1000,
@@ -86,7 +124,7 @@ class GeneralDataLoader(object):
             if len(protein_indices) < self.protein_sequence_length:
                 protein_indices = protein_indices + [0 for x in range(self.protein_sequence_length -
                                                                       len(protein_indices))]
-            if len(chemical_indices) < self.protein_sequence_length:
+            if len(chemical_indices) < self.chemical_sequence_length:
                 chemical_indices = chemical_indices + [0 for x in range(self.chemical_sequence_length -
                                                                         len(chemical_indices))]
 
