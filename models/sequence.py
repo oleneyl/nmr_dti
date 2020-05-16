@@ -1,6 +1,6 @@
 from .base import BaseModel
 import tensorflow as tf
-from .attention import Encoder, VectorEncoder, VectorDecoder, point_wise_feed_forward_network
+from models.modules.attention import Encoder, VectorEncoder, point_wise_feed_forward_network
 
 """
 ProteinModel :: get Input as indices_array, return Tensor with shape [None, args.sequential_dense]

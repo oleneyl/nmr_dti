@@ -1,7 +1,7 @@
 import tensorflow as tf
 from .cnn import NMR_Infuse, SequentialCNNModel
 from .sequence import RNNProteinModel, AttentionProteinModel, transformer_args
-from .attention import DecoderLayer, VectorDecoder, EncoderLayer
+from models.modules.attention import DecoderLayer, VectorDecoder, EncoderLayer
 
 
 def add_model_args(parser):

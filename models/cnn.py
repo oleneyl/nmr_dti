@@ -1,7 +1,7 @@
 import tensorflow as tf
 from .base import BaseModel
-from .sequence import RNNProteinModel, AttentionProteinModel
-from .attention import VectorDecoder, Encoder, Decoder, VectorEncoder
+from .sequence import AttentionProteinModel
+from models.modules.attention import Encoder, VectorEncoder
 
 
 class SequentialCNNModel(BaseModel):

@@ -4,10 +4,9 @@ import os
 
 from options import get_args
 from models.nmr_inference import BaseNMRModel
-from models.attention import create_padding_mask
-from progress import get_progress_handler, ProgressLogger
+from models.modules.attention import create_padding_mask
+from progress import get_progress_handler
 from preprocess.data_utils.data_loader import NMRDataLoader
-from learning_rate import get_learning_rate_scheduler
 from pprint import pprint
 
 
