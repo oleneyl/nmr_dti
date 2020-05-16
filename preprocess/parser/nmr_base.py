@@ -9,7 +9,7 @@ from tqdm import tqdm
 from collections import defaultdict
 import numpy as np
 
-from .kernel import get_conf
+from preprocess.kernel import get_conf
 
 
 def get_nmr_engine(engine_dir=None):
