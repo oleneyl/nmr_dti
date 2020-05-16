@@ -1,6 +1,6 @@
 from .base import BaseModel
 import tensorflow as tf
-from .attention import Encoder, VectorEncoder, VectorDecoder
+from .attention import Encoder, VectorEncoder, VectorDecoder, point_wise_feed_forward_network
 
 """
 ProteinModel :: get Input as indices_array, return Tensor with shape [None, args.sequential_dense]
@@ -66,4 +66,38 @@ class AttentionProteinModel(BaseModel):
             output = self.dense(output)
             output = self.batch_norm(output, training=training)
             output = self.dropout(output, training=training)
+        return output
+
+
+class NMRInferenceModel(BaseModel):
+    def __init__(self, args, vocab_size, vectorized=False, export_level="end"):
+        super(NMRInferenceModel, self).__init__(args)
+        self.vocab_size = vocab_size
+
+        if vectorized:
+            self.encoder = VectorEncoder(self.args.transformer_num_layers,
+                                         self.args.transformer_model_dim,
+                                         self.args.transformer_num_heads,
+                                         self.args.transformer_hidden_dimension,
+                                         rate=self.args.transformer_dropout_rate)
+        else:
+            self.encoder = Encoder(self.args.transformer_num_layers,
+                                   self.args.transformer_model_dim,
+                                   self.args.transformer_num_heads,
+                                   self.args.transformer_hidden_dimension,
+                                   self.vocab_size,
+                                   rate=self.args.transformer_dropout_rate)
+
+        self.dropout = tf.keras.layers.Dropout(self.args.concat_dropout)
+        self.flatten = point_wise_feed_forward_network(1, 256)
+        self.export_level = export_level
+
+    def call(self, input_tensor, training=None, mask=None):
+        output = self.encoder(input_tensor, mask=mask, training=training)
+
+        if self.export_level == 'end':
+            output = self.dropout(output)
+            output = self.flatten(output)
+
+        output = tf.squeeze(output, axis=-1)
         return output
