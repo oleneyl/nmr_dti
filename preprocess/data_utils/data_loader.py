@@ -86,14 +86,17 @@ class NMRDataLoader(object):
                 smiles, nmr_value_list, mask = datum
 
             smiles = self.vocab.encode(smiles)
+            pad_mask = [0 for x in range(len(smiles))]
 
             smiles = smiles + [0 for x in range(self.chemical_sequence_length)]
             nmr_value_list = nmr_value_list + [0.0 for x in range(self.chemical_sequence_length)]
+            pad_mask = pad_mask + [1.0 for x in range(self.chemical_sequence_length)]
             mask = mask + [0.0 for x in range(self.chemical_sequence_length)]
 
             batch.append([[len(smiles)],
                           smiles[:self.chemical_sequence_length],
                           nmr_value_list[:self.chemical_sequence_length],
+                          pad_mask[:self.chemical_sequence_length],
                           mask[:self.chemical_sequence_length]])
 
             if len(batch) == self.batch_size:
