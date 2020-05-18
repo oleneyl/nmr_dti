@@ -4,7 +4,7 @@ from models.sequence import AttentionProteinModel
 from models.modules.attention import Encoder, VectorEncoder
 
 
-class SequentialCNNMoel(BaseModel):
+class SequentialCNNModel(BaseModel):
     def __init__(self, args, vocab_size):
         super(SequentialCNNModel, self).__init__(args)
         self.vocab_size = vocab_size
