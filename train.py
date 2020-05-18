@@ -6,7 +6,6 @@ from options import get_args
 from models import get_model
 from progress import get_progress_handler, ProgressLogger
 from preprocess.data_utils.data_loader import get_data_loader
-from learning_rate import get_learning_rate_scheduler
 from pprint import pprint
 from sklearn.metrics import roc_auc_score
 from tensorflow.python.keras.callbacks import TensorBoard
@@ -88,9 +87,6 @@ def train(args):
                                tf.keras.metrics.FalsePositives(name='false_positives'),
                                tf.keras.metrics.FalseNegatives(name='false_negatives'),
                                auroc])
-
-    # Create graph
-    learning_rate = get_learning_rate_scheduler(args)
 
     # Summary
     model.summary()
