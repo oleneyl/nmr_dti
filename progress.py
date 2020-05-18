@@ -6,7 +6,7 @@ import time
 import tensorflow as tf
 import sklearn.metrics
 import os
-
+import datetime
 
 def add_progress_args(parser):
     group = parser.add_argument_group('progress')
@@ -171,7 +171,8 @@ class ProgressLogger(object):
 
     def emit(self, prefix, metrics_names, result):
         parsed_result = {}
-        log = f"{prefix}: "
+        timestamp = str(datetime.datetime.now())
+        log = f"[{timestamp}] | {prefix}: "
         for i in range(len(metrics_names)):
             parsed_result[metrics_names[i]] = result[i]
         log += self._parse(parsed_result)
