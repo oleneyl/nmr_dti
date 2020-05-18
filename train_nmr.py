@@ -37,7 +37,7 @@ def train(args):
     model = nmr_interaction.create_keras_model()
 
     # Learning rate
-    # learning_rate_scheduler = get_learning_rate_scheduler(model, args)
+    learning_rate_scheduler = get_learning_rate_scheduler(model, args)
 
     # Compile model with metrics
     model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
@@ -62,8 +62,8 @@ def train(args):
         test_data = NMRDataLoader(args.nmr_dir, 'test', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
 
         print(f'Epoch {epoch} start')
-        # learning_rate_scheduler.update_learning_rate(epoch)
-        # logger.print_log(learning_rate_scheduler.report())
+        learning_rate_scheduler.update_learning_rate(epoch)
+        logger.print_log(learning_rate_scheduler.report())
 
         # Train
         for idx, datum in enumerate(train_data):
