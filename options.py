@@ -10,7 +10,7 @@ def get_args():
     base_group = parser.add_argument_group('base')
     base_group.add_argument('--nmr', action='store_true', help='determine whether use nmr data or not')
     base_group.add_argument('--drop_smile', action='store_true', help='If true, do not use SMILES data for prediction')
-
+    base_group.add_argument('--skip_test', action='store_true', help='If true, do not use test dataset')
     add_data_util_args(parser)
     add_model_args(parser)
     add_progress_args(parser)
