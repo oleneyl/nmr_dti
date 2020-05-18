@@ -7,6 +7,7 @@ from models.nmr_inference import BaseNMRModel
 from models.modules.attention import create_padding_mask
 from progress import get_progress_handler
 from preprocess.data_utils.data_loader import NMRDataLoader
+from learning_rate import get_learning_rate_scheduler
 from pprint import pprint
 
 
@@ -17,9 +18,12 @@ def train(args):
         return _mask
 
     def create_input_sample(_datum):
-        _smiles_len, _smiles, _nmr_value_list, _mask = _datum
-        _pad_mask = create_padding_mask(_smiles)
+        _smiles_len, _smiles, _nmr_value_list, _pad_mask, _mask = _datum
+        # _pad_mask = 1.0 - _mask
+        _pad_mask = _pad_mask[:, tf.newaxis, tf.newaxis, :]
+        # _pad_mask = create_padding_mask(_smiles)
         return [_smiles_len, _smiles, _pad_mask, _mask], _nmr_value_list
+        # return [_smiles_len, _smiles, _mask], _nmr_value_list
 
     print("***  Run environment  ***")
     pprint(args)
@@ -32,6 +36,9 @@ def train(args):
     nmr_interaction = BaseNMRModel(args)
     model = nmr_interaction.create_keras_model()
 
+    # Learning rate
+    # learning_rate_scheduler = get_learning_rate_scheduler(model, args)
+
     # Compile model with metrics
     model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
                   loss=tf.keras.losses.MSE,
@@ -42,6 +49,7 @@ def train(args):
     tensorboard, logger = get_progress_handler(args)
     tensorboard.info()  # Print Information what now tensorboard is tracking
 
+    logger.print_log(str(args))
     metrics_names = model.metrics_names
     global_step = 0
 
@@ -54,6 +62,8 @@ def train(args):
         test_data = NMRDataLoader(args.nmr_dir, 'test', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
 
         print(f'Epoch {epoch} start')
+        # learning_rate_scheduler.update_learning_rate(epoch)
+        # logger.print_log(learning_rate_scheduler.report())
 
         # Train
         for idx, datum in enumerate(train_data):
