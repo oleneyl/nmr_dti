@@ -37,9 +37,9 @@ class NMRPredictionDatasetReaer():
         item = self._cache.iloc[idx]
         return NMRPredictionDatasetReaer._parse_item_into_input(item, target_atom='C')
 
-    def _manual_getitem(self, idx, log=False):
+    def _manual_getitem(self, idx, log=False, rooted_atom=-1):
         item = self._cache.iloc[idx]
-        return NMRPredictionDatasetReaer._parse_item_into_input(item, target_atom='C', log=log)
+        return NMRPredictionDatasetReaer._parse_item_into_input(item, target_atom='C', log=log, rooted_atom=rooted_atom)
 
     def _validate(self, smiles, value, target_atom):
         # count carbon
@@ -51,7 +51,7 @@ class NMRPredictionDatasetReaer():
         return (atom_count <= len(value))
 
     @classmethod
-    def _parse_item_into_input(cls, item, target_atom='C', log=False):
+    def _parse_item_into_input(cls, item, target_atom='C', log=False, rooted_atom=-1):
         def standardize_value(nmr_pick):
             MEAN = 97.53
             STD = 51.53
@@ -63,7 +63,7 @@ class NMRPredictionDatasetReaer():
 
         # Transform given molecule into SMILES without Hydrogen
         mol = Chem.rdmolops.RemoveAllHs(mol)
-        smiles = Chem.MolToSmiles(mol, allHsExplicit=False)
+        smiles = Chem.MolToSmiles(mol, allHsExplicit=False, rootedAtAtom=rooted_atom)
         mol = Chem.MolFromSmiles(smiles)
 
         align_list = mol_origin.GetSubstructMatch(mol)

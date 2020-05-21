@@ -57,7 +57,9 @@ def train(args):
     for epoch in range(1, args.epoch + 1):
         model.reset_metrics()
         # TODO data loader must be changed
-        train_data = NMRDataLoader(args.nmr_dir, 'train', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
+        # train_data = NMRDataLoader(args.nmr_dir, 'train', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
+        train_data = NMRDataLoader(args.nmr_dir + '.aug.pickle', 'train', batch_size=args.batch_size,
+                                   chemical_sequence_length=args.chemical_sequence_length, reader_type='aug')
         valid_data = NMRDataLoader(args.nmr_dir, 'valid', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
         test_data = NMRDataLoader(args.nmr_dir, 'test', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
 
@@ -74,15 +76,16 @@ def train(args):
                 logger.emit("Training", metrics_names, result)
                 tensorboard.create_summary(global_step, result, model, prefix='train')
 
-
         # Validation / Test
         for dataset, set_type in ((valid_data, 'valid'), (test_data, 'test')):
+            if set_type == 'test' and args.skip_test:
+                continue
             for datum in dataset:
                 xs, ys = create_input_sample(datum)
                 result = model.test_on_batch(xs, ys, reset_metrics=False)
             is_best = logger.emit(set_type, metrics_names, result)
-            # if is_best:
-            #    tensorboard.save_model(model, 'best')
+            if is_best and args.save_best:
+                tensorboard.save_model(model, 'best')
             tensorboard.create_summary(global_step, result, model, prefix=set_type)
             model.reset_metrics()
 

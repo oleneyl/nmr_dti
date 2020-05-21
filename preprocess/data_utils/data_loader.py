@@ -1,5 +1,4 @@
-from ..data_reader import JSONDataReader, NMRDataReader, RestrictiveNMRDataReader
-from ..kernel import get_conf
+from ..data_reader import JSONDataReader, NMRDataFrameReader
 from ..nmr_prediction_dataset import NMRPredictionDatasetReaer
 from .numpy_adapter import get_adapter
 import numpy as np
@@ -66,10 +65,16 @@ def get_data_loader(args):
 class NMRDataLoader(object):
     def __init__(self, data_file_name, data_type, batch_size=1,
                  chemical_sequence_length=256,
-                 training=True):
+                 training=True, reader_type='raw'):
         self.batch_size = batch_size
         self.data_file_name = data_file_name
-        self.data_reader = NMRPredictionDatasetReaer(data_file_name, data_type)
+        if reader_type == 'raw':
+            self.data_reader = NMRPredictionDatasetReaer(data_file_name, data_type)
+        elif reader_type == 'aug':
+            self.data_reader = NMRDataFrameReader(data_file_name)
+        else:
+            raise TypeError()
+
         self.chemical_sequence_length = chemical_sequence_length
         self.training = training
         self.vocab = NMRSMilesVocab()
