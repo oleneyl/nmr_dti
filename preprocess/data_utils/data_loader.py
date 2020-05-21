@@ -1,5 +1,5 @@
 from ..data_reader import JSONDataReader, NMRDataFrameReader
-from ..nmr_prediction_dataset import NMRPredictionDatasetReaer
+from ..nmr_prediction_dataset import NMRPredictionDatasetReaer, retrieve_smiles
 from .numpy_adapter import get_adapter
 import numpy as np
 import os
@@ -89,6 +89,9 @@ class NMRDataLoader(object):
                 continue
             else:
                 smiles, nmr_value_list, mask = datum
+
+            retrieved_smiles = retrieve_smiles(smiles)
+
 
             smiles = self.vocab.encode(smiles)
             pad_mask = [0 for x in range(len(smiles))]

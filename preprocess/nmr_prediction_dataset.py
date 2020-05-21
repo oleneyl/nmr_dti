@@ -11,9 +11,17 @@ SMILES_SIMPLIFY_MAP = {
     "Br": "R"
 }
 
+
 def simplify_smiles(smiles):
     for k, v in SMILES_SIMPLIFY_MAP.items():
         smiles = smiles.replace(k, v)
+
+    return smiles
+
+
+def retrieve_smiles(smiles):
+    for k, v in SMILES_SIMPLIFY_MAP.items():
+        smiles = smiles.replace(v, k)
 
     return smiles
 
