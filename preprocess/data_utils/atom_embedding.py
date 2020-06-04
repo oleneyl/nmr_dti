@@ -103,9 +103,9 @@ def create_additive_embedding(smiles, simplified_smiles, target_atom='C'):
     additive_embedding = []
     for idx, ch in enumerate(simplified_smiles):
         if ch in (string.ascii_uppercase + string.ascii_lowercase) and ch is not 'H':
-            additive_embedding.append(node_map[atom_count])
+            additive_embedding.append(node_map[atom_count].tolist())
             atom_count += 1
         else:
-            additive_embedding.append(np.zeros([dim_node], dtype=np.int8))
+            additive_embedding.append(np.zeros([dim_node], dtype=np.int8).tolist())
 
     return additive_embedding

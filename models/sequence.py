@@ -70,7 +70,7 @@ class AttentionProteinModel(BaseModel):
 
 
 class NMRInferenceModel(BaseModel):
-    def __init__(self, args, vocab_size, vectorized=False, export_level="end"):
+    def __init__(self, args, vocab_size, vectorized=True, export_level="end"):
         super(NMRInferenceModel, self).__init__(args)
         self.vocab_size = vocab_size
 

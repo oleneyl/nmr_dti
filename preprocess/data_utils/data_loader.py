@@ -1,10 +1,12 @@
 from ..data_reader import JSONDataReader, NMRDataFrameReader
 from ..nmr_prediction_dataset import NMRPredictionDatasetReaer, retrieve_smiles
+from .atom_embedding import create_additive_embedding
 from .numpy_adapter import get_adapter
 import numpy as np
 import os
 import json
 from .vocab import NMRSMilesVocab
+
 
 def data_loader_args(parser):
     group = parser.add_argument_group('data_loader')
@@ -65,7 +67,7 @@ def get_data_loader(args):
 class NMRDataLoader(object):
     def __init__(self, data_file_name, data_type, batch_size=1,
                  chemical_sequence_length=256,
-                 training=True, reader_type='raw'):
+                 training=True, reader_type='raw', atom_embedding=False):
         self.batch_size = batch_size
         self.data_file_name = data_file_name
         if reader_type == 'raw':
@@ -77,6 +79,7 @@ class NMRDataLoader(object):
 
         self.chemical_sequence_length = chemical_sequence_length
         self.training = training
+        self.atom_embedding = atom_embedding
         self.vocab = NMRSMilesVocab()
 
     def reset(self):
@@ -88,10 +91,15 @@ class NMRDataLoader(object):
             if datum is None:
                 continue
             else:
-                smiles, nmr_value_list, mask = datum
-
-            retrieved_smiles = retrieve_smiles(smiles)
-
+                if len(datum) == 3:
+                    smiles, nmr_value_list, mask = datum
+                    if self.atom_embedding:
+                        retrieved_smiles = retrieve_smiles(smiles)
+                        atom_embedding = create_additive_embedding(retrieved_smiles, smiles)
+                elif len(datum) == 4:
+                    smiles, nmr_value_list, mask, atom_embedding = datum
+                else:
+                    raise TypeError("Undefined datum type detected")
 
             smiles = self.vocab.encode(smiles)
             pad_mask = [0 for x in range(len(smiles))]
@@ -101,15 +109,23 @@ class NMRDataLoader(object):
             pad_mask = pad_mask + [1.0 for x in range(self.chemical_sequence_length)]
             mask = mask + [0.0 for x in range(self.chemical_sequence_length)]
 
-            batch.append([[len(smiles)],
-                          smiles[:self.chemical_sequence_length],
-                          nmr_value_list[:self.chemical_sequence_length],
-                          pad_mask[:self.chemical_sequence_length],
-                          mask[:self.chemical_sequence_length]])
+            packet = [[len(smiles)],
+                      smiles[:self.chemical_sequence_length],
+                      nmr_value_list[:self.chemical_sequence_length],
+                      pad_mask[:self.chemical_sequence_length],
+                      mask[:self.chemical_sequence_length]]
+
+            if self.atom_embedding:
+                atom_embedding = atom_embedding + [np.zeros(len(atom_embedding[0])).tolist()
+                                                   for x in range(self.chemical_sequence_length)]
+                packet += [atom_embedding[:self.chemical_sequence_length]]
+
+            batch.append(packet)
 
             if len(batch) == self.batch_size:
                 yield [np.array(x) for x in zip(*batch)]
                 batch = []
+
 
 class GeneralDataLoader(object):
     def __init__(self, data_file_name, nmr_dir, batch_size=1,

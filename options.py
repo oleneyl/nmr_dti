@@ -40,6 +40,7 @@ def add_training_args(parser):
 
     group.add_argument('--epoch', type=int, default=1)
     group.add_argument('--grad_clip', type=float, default=1.0)
+    group.add_argument('--atom_embedding', action='store_true')
 
 
 def add_device_args(parser):

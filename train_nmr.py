@@ -12,17 +12,14 @@ from pprint import pprint
 
 
 def train(args):
-    def create_modal_mask(_datum):
-        _smiles_len, _smiles, _nmr_value_list, _mask = _datum
-        _mask = np.zeros(_smiles.shape)
-        return _mask
-
     def create_input_sample(_datum):
-        _smiles_len, _smiles, _nmr_value_list, _pad_mask, _mask = _datum
-        # _pad_mask = 1.0 - _mask
+        #_smiles_len, _smiles, _nmr_value_list, _pad_mask, _mask, _atom_embed = _datum
+
+        _pad_mask = _datum[3]
         _pad_mask = _pad_mask[:, tf.newaxis, tf.newaxis, :]
         # _pad_mask = create_padding_mask(_smiles)
-        return [_smiles_len, _smiles, _pad_mask, _mask], _nmr_value_list
+        return list(_datum[0:2]) + [_pad_mask] + list(_datum[4:]), _datum[2]
+        # return [_smiles_len, _smiles, _pad_mask, _mask, _atom_embed], _nmr_value_list
         # return [_smiles_len, _smiles, _mask], _nmr_value_list
 
     print("***  Run environment  ***")
@@ -58,10 +55,16 @@ def train(args):
         model.reset_metrics()
         # TODO data loader must be changed
         # train_data = NMRDataLoader(args.nmr_dir, 'train', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
-        train_data = NMRDataLoader(args.nmr_dir + '.aug.pickle', 'train', batch_size=args.batch_size,
-                                   chemical_sequence_length=args.chemical_sequence_length, reader_type='aug')
-        valid_data = NMRDataLoader(args.nmr_dir, 'valid', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
-        test_data = NMRDataLoader(args.nmr_dir, 'test', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
+        if args.atom_embedding:
+            train_data = NMRDataLoader(args.nmr_dir + '.aug.atom.pickle', 'train', batch_size=args.batch_size,
+                                       chemical_sequence_length=args.chemical_sequence_length, reader_type='aug', atom_embedding=args.atom_embedding)
+        else:
+            train_data = NMRDataLoader(args.nmr_dir + '.aug.pickle', 'train', batch_size=args.batch_size,
+                                       chemical_sequence_length=args.chemical_sequence_length, reader_type='aug', atom_embedding=args.atom_embedding)
+        valid_data = NMRDataLoader(args.nmr_dir, 'valid', batch_size=args.batch_size,
+                                   chemical_sequence_length=args.chemical_sequence_length, atom_embedding=args.atom_embedding)
+        test_data = NMRDataLoader(args.nmr_dir, 'test', batch_size=args.batch_size,
+                                  chemical_sequence_length=args.chemical_sequence_length, atom_embedding=args.atom_embedding)
 
         print(f'Epoch {epoch} start')
         learning_rate_scheduler.update_learning_rate(epoch)

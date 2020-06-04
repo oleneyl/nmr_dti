@@ -17,23 +17,37 @@ class BaseNMRModel(object):
                                           name='modal_mask')
         self._output_mask = tf.keras.Input(shape=[args.chemical_sequence_length], dtype=tf.float32, name='output_mask')
         self._smiles_encoded_len = tf.keras.Input(shape=[1], dtype=tf.int32, name='smile_input_len')
+        self._atom_embed = tf.keras.Input(shape=[args.chemical_sequence_length, 31], dtype=tf.float32, name='atom_embed')
         self.args = args
 
         self.protein_model = None
         self.chemical_model = None
 
         with tf.name_scope('chemical'):
-            self.nmr_model = NMRInferenceModel(args, args.chemical_vocab_size, vectorized=False)
+            self.nmr_model = NMRInferenceModel(args, args.chemical_vocab_size, vectorized=True)
+
+        self.embedding = tf.keras.layers.Embedding(args.chemical_vocab_size, args.transformer_model_dim)
+        self.embedding_2 = tf.keras.layers.Dense(args.transformer_model_dim, activation=None)
 
     def inputs(self):
-        return [self._smiles_encoded_len, self._smiles_encoded, self._modal_mask, self._output_mask]
+        if self.args.atom_embedding:
+            return [self._smiles_encoded_len, self._smiles_encoded, self._modal_mask, self._output_mask, self._atom_embed]
+        else:
+            return [self._smiles_encoded_len, self._smiles_encoded, self._modal_mask, self._output_mask]
         # return [self._smiles_encoded_len, self._smiles_encoded, self._output_mask]
 
     def unsupervised_chemical(self):
         pass
 
     def predict(self):
-        inference_output = self.nmr_model(self._smiles_encoded, mask=self._modal_mask)
+        if self.args.atom_embedding:
+            enc_1 = self.embedding(self._smiles_encoded)
+            enc_2 = self.embedding_2(self._atom_embed)
+            enc = enc_1 + enc_2
+        else:
+            enc = self.embedding(self._smiles_encoded)
+        # inference_output = self.nmr_model(self._smiles_encoded, mask=self._modal_mask)
+        inference_output = self.nmr_model(enc, mask=self._modal_mask)
         # inference_output = self.nmr_model(self._smiles_encoded)
         return inference_output
 
