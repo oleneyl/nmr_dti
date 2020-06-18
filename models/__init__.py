@@ -59,14 +59,15 @@ class BaseDTIModel(object):
         self.chemical_model = None
         self.nmr_model = None
 
+
         with tf.name_scope('protein'):
-            self.protein_model = create_sequence_model(args, args.protein_vocab_size, export_level=export_level)(self._protein_encoded)
+            self.protein_model = create_sequence_model(args, 'att', args.protein_vocab_size, export_level=export_level)(self._protein_encoded)
         with tf.name_scope('chemical'):
             if args.nmr:
                 self.nmr_model = NMR_Infuse(args, args.chemical_vocab_size)
                 self.chemical_model = self.nmr_model(self._nmr_array, chemical_tensor=self._smiles_encoded, modal_mask=self._modal_mask)
             else:
-                self.chemical_model = create_sequence_model(args, args.chemical_vocab_size, export_level=export_level)(self._smiles_encoded)
+                self.chemical_model = create_sequence_model(args, 'att', args.chemical_vocab_size, export_level=export_level)(self._smiles_encoded)
 
     def inputs(self):
         if self.args.nmr:

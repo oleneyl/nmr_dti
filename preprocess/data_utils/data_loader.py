@@ -1,11 +1,11 @@
 from ..data_reader import JSONDataReader, NMRDataFrameReader
-from ..nmr_prediction_dataset import NMRPredictionDatasetReaer, retrieve_smiles
+from ..nmr_prediction_dataset import NMRPredictionDatasetReaer, retrieve_smiles, NMRPredictionAtomicDatasetReader, create_mask
 from .atom_embedding import create_additive_embedding
 from .numpy_adapter import get_adapter
 import numpy as np
 import os
 import json
-from .vocab import NMRSMilesVocab
+from .vocab import NMRSMilesVocab, AtomOrbitalVocab
 
 
 def data_loader_args(parser):
@@ -163,3 +163,56 @@ class GeneralDataLoader(object):
 
     def flatten(self):
         return list(self)
+
+
+class NMRAtomLoader(object):
+    def __init__(self, data_file_name, data_type, batch_size=1,
+                 chemical_sequence_length=256,
+                 training=True, atom_embedding=False):
+
+        self.batch_size = batch_size
+        self.data_file_name = data_file_name
+        self.data_reader = NMRPredictionAtomicDatasetReader(data_file_name, data_type)
+
+        self.chemical_sequence_length = chemical_sequence_length
+        self.training = training
+        self.atom_embedding = atom_embedding
+        self.vocab = AtomOrbitalVocab()
+
+    def reset(self):
+        self.data_reader = NMRPredictionAtomicDatasetReader(self.data_file_name)
+
+    def __iter__(self):
+        batch = []
+        for datum in self.data_reader:
+            if datum is None:
+                continue
+            else:
+                position_matrix, direction_matrix, embedding_list, atom_to_orbital, nmr_value_list, output_mask = datum
+
+            position_matrix = position_matrix + [[0,0,0] for x in range(self.chemical_sequence_length)]
+            direction_matrix = direction_matrix + [[[0,0,0],[0,0,0],[0,0,0]] for x in range(self.chemical_sequence_length)]
+            position_matrix = np.array(position_matrix[:self.chemical_sequence_length])
+            direction_matrix = np.array(direction_matrix[:self.chemical_sequence_length])
+
+            distance, angular_distance = create_mask(position_matrix, direction_matrix)
+
+            embedding_list = self.vocab(embedding_list) + [self.vocab.ENDL for x in range(self.chemical_sequence_length)]
+            orbital_matrix = np.zeros([self.chemical_sequence_length, self.chemical_sequence_length])
+            for a_idx, o_idx in atom_to_orbital:
+                orbital_matrix[a_idx, o_idx] = 1
+            nmr_value_list = nmr_value_list + [0.0 for x in range(self.chemical_sequence_length)]
+            output_mask = output_mask + [0.0 for x in range(self.chemical_sequence_length)]
+
+            packet = [embedding_list[:self.chemical_sequence_length],
+                      distance,
+                      angular_distance,
+                      orbital_matrix,
+                      nmr_value_list[:self.chemical_sequence_length],
+                      output_mask[:self.chemical_sequence_length]]
+
+            batch.append(packet)
+
+            if len(batch) == self.batch_size:
+                yield [np.array(x) for x in zip(*batch)]
+                batch = []

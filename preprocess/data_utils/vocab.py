@@ -1,5 +1,5 @@
 import sentencepiece as spm
-
+import string
 
 class Vocab(object):
     """Vocab converts given sequence into list - of - index
@@ -44,6 +44,38 @@ class NMRSMilesVocab(Vocab):
 
     def decode(self, indices_array):
         return ''.join([self.chars[idx] for idx in indices_array])
+
+
+class CharacterDTASMILESVocab(Vocab):
+    def __init__(self):
+        self.chars = ['C', '1', '=', '\\', '2', '(', ')', 'N', 'O', 'B',
+                      '/', '3', '[', '@', 'H', ']', '4', '5', '#',
+                      '6', 'S', '7', 'F', '+', '-', 'Cl', 'Br',
+                      'I', 'P', '8', '.', 'Na', 'Se', '9', 'Si', 'K',
+                      'As', 'Ru', 'Fe', 'Re', 'V', 'Sb', 'Gd']
+
+        self.reverse_map = {x: idx for idx, x in enumerate(self.chars)}
+        self.ENDL = len(self.chars)
+
+    @classmethod
+    def split_with_concat_small_character(cls, sequence):
+        chs = []
+        for idx, ch in enumerate(sequence):
+            if ch in string.ascii_lowercase:
+                continue
+            if idx != len(sequence)-1 and sequence[idx+1] in string.ascii_lowercase:
+                chs.append(sequence[idx:idx+2])
+            else:
+                chs.append(ch)
+        return chs
+
+    def encode(self, sequence):
+        tokens = CharacterDTASMILESVocab.split_with_concat_small_character(sequence)
+        return [self.reverse_map[ch] for ch in tokens] + [self.ENDL]
+
+    def decode(self, indices_array):
+        return ''.join([self.chars[idx] for idx in indices_array])
+
 
 class SimpleSMILESVocab(Vocab):
     def __init__(self):
@@ -92,3 +124,17 @@ class DTAProteinVocab(Vocab):
 
     def decode(self, indices_array):
         return ''.join([self.chars[idx] for idx in indices_array])
+
+class AtomOrbitalVocab(Vocab):
+    def __init__(self):
+        self.orbits = ['Hs']
+        for atom in 'BCONFSP':
+            self.orbits += [atom + orb for orb in ['s', 'px', 'py', 'pz']]
+        self.reverse_map = {x: idx for idx, x in enumerate(self.orbits)}
+        self.ENDL = len(self.orbits)
+
+    def encode(self, sequence):
+        return [self.reverse_map[ch] for ch in sequence] + [self.ENDL]
+
+    def decode(self, indices_array):
+        return ''.join([self.orbits[idx] for idx in indices_array])

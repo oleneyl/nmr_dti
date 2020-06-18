@@ -106,7 +106,6 @@ def train(args):
         # Train
         for idx, datum in enumerate(train_data):
             xs, ys = create_input_sample(datum)
-            print(ys)
             result = model.train_on_batch(xs, ys)
             global_step += 1
             if idx % args.log_interval == 0:
