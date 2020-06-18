@@ -13,8 +13,7 @@ from pprint import pprint
 
 def train(args):
     def create_input_sample(_datum):
-        _embedding_list, _distance, _angular_distance, _orbital_matrix, _nmr_value_list, _output_mask = _datum
-        _pad_mask = _datum[3]
+        _embedding_list, _distance, _angular_distance, _orbital_matrix, _nmr_value_list, _output_mask, _pad_mask = _datum
         _pad_mask = _pad_mask[:, tf.newaxis, tf.newaxis, :]
         # _pad_mask = create_padding_mask(_smiles)
         return ([_embedding_list,
@@ -22,7 +21,8 @@ def train(args):
                 _distance,
                 _angular_distance,
                 _orbital_matrix,
-                _output_mask], _nmr_value_list)
+                _output_mask,
+                _pad_mask], _nmr_value_list)
 
     print("***  Run environment  ***")
     pprint(args)
@@ -71,11 +71,15 @@ def train(args):
         # Train
         for idx, datum in enumerate(train_data):
             xs, ys = create_input_sample(datum)
+            # print([x[0] for x in xs])
             result = model.train_on_batch(xs, ys)
             global_step += 1
             if idx % args.log_interval == 0:
-                res = model.predict(xs)
-                # print(res[0], ys[0])
+                '''
+                print([(x[0],'\n') for x in xs])
+                print(ys[0])
+                print(model.predict(xs)[0])
+                '''
                 logger.emit("Training", metrics_names, result)
                 tensorboard.create_summary(global_step, result, model, prefix='train')
 

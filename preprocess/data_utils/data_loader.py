@@ -190,26 +190,33 @@ class NMRAtomLoader(object):
             else:
                 position_matrix, direction_matrix, embedding_list, atom_to_orbital, nmr_value_list, output_mask = datum
 
+            pad_mask = [0.0 for x in range(len(position_matrix))]
+            pad_mask = pad_mask + [1.0 for x in range(self.chemical_sequence_length)]
+
             position_matrix = position_matrix + [[0,0,0] for x in range(self.chemical_sequence_length)]
             direction_matrix = direction_matrix + [[[0,0,0],[0,0,0],[0,0,0]] for x in range(self.chemical_sequence_length)]
             position_matrix = np.array(position_matrix[:self.chemical_sequence_length])
             direction_matrix = np.array(direction_matrix[:self.chemical_sequence_length])
 
+
             distance, angular_distance = create_mask(position_matrix, direction_matrix)
 
+            atomic_length = self.chemical_sequence_length // 2
+
             embedding_list = self.vocab(embedding_list) + [self.vocab.ENDL for x in range(self.chemical_sequence_length)]
-            orbital_matrix = np.zeros([self.chemical_sequence_length, self.chemical_sequence_length])
+            orbital_matrix = np.zeros([atomic_length, self.chemical_sequence_length])
             for a_idx, o_idx in atom_to_orbital:
                 orbital_matrix[a_idx, o_idx] = 1
-            nmr_value_list = nmr_value_list + [0.0 for x in range(self.chemical_sequence_length)]
-            output_mask = output_mask + [0.0 for x in range(self.chemical_sequence_length)]
+            nmr_value_list = nmr_value_list + [0.0 for x in range(atomic_length)]
+            output_mask = output_mask + [0.0 for x in range(atomic_length)]
 
             packet = [embedding_list[:self.chemical_sequence_length],
                       distance,
                       angular_distance,
                       orbital_matrix,
-                      nmr_value_list[:self.chemical_sequence_length],
-                      output_mask[:self.chemical_sequence_length]]
+                      nmr_value_list[:atomic_length],
+                      output_mask[:atomic_length],
+                      pad_mask[:self.chemical_sequence_length]]
 
             batch.append(packet)
 

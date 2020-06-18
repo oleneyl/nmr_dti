@@ -112,12 +112,15 @@ from .modules.atomic import AtomicLayer
 
 class AtomicNet(object):
     def __init__(self, args):
+        atomic_length = args.chemical_sequence_length // 2
         self._atom_type = tf.keras.Input(shape=[args.chemical_sequence_length], dtype=tf.int32, name='atom_input')
         self._orbit_coeff = tf.keras.Input(shape=[args.chemical_sequence_length, args.chemical_sequence_length], dtype=tf.float32)
         self._distance = tf.keras.Input(shape=[args.chemical_sequence_length, args.chemical_sequence_length], dtype=tf.float32)
         self._angle = tf.keras.Input(shape=[args.chemical_sequence_length, args.chemical_sequence_length], dtype=tf.float32)
-        self._extract_matrix = tf.keras.Input(shape=[args.chemical_sequence_length, args.chemical_sequence_length], dtype=tf.float32)
-        self._output_mask = tf.keras.Input(shape=[args.chemical_sequence_length], dtype=tf.float32, name='output_mask')
+        self._extract_matrix = tf.keras.Input(shape=[atomic_length, args.chemical_sequence_length], dtype=tf.float32)
+        self._output_mask = tf.keras.Input(shape=[atomic_length], dtype=tf.float32, name='output_mask')
+        self._pad_mask = tf.keras.Input(shape=[1, 1, args.chemical_sequence_length], dtype=tf.float32,
+                                          name='pad_mask')
         self.args = args
 
         with tf.name_scope('chemical'):
@@ -131,7 +134,13 @@ class AtomicNet(object):
         self.output_dense = tf.keras.layers.Dense(1)
 
     def inputs(self):
-        return [self._atom_type, self._orbit_coeff, self._distance, self._angle, self._extract_matrix, self._output_mask]
+        return [self._atom_type,
+                self._orbit_coeff,
+                self._distance,
+                self._angle,
+                self._extract_matrix,
+                self._output_mask,
+                self._pad_mask]
 
     def unsupervised_chemical(self):
         pass
@@ -140,10 +149,15 @@ class AtomicNet(object):
         orbit_state = self.embedding(self._atom_type)
         orbit_coeff = self._orbit_coeff
         for i in range(self.layer_num):
-            orbit_state, orbit_coeff = self.atomic_layer[i]([orbit_state, orbit_coeff, -1 * self._distance + tf.abs(self._angle)])
+            # orbit_state, orbit_coeff = self.atomic_layer[i]([orbit_state, orbit_coeff, -1 * self._distance], mask=self._pad_mask)
+            orbit_state = self.atomic_layer[i]([orbit_state, -1 * self._distance], mask=self._pad_mask)
         with tf.name_scope('matmul_test_1'):
+            print('state_output')
+            print(orbit_state.shape, orbit_coeff.shape)
             state_output = tf.matmul(orbit_coeff, orbit_state)
         with tf.name_scope('matmul_test_2'):
+            print(self._extract_matrix.shape)
+            print(state_output.shape)
             gather_state = tf.matmul(self._extract_matrix, state_output)
         inference_output = self.output_dense(gather_state)
         inference_output = tf.squeeze(inference_output, axis=-1)
