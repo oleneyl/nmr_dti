@@ -128,7 +128,7 @@ class DTAProteinVocab(Vocab):
 class AtomOrbitalVocab(Vocab):
     def __init__(self):
         self.orbits = ['Hs']
-        for atom in 'BCONFSP':
+        for atom in ['C', 'O', 'N', 'S', 'P', 'Cl', 'I', 'Zn', 'F', 'Ca', 'As', 'Br', 'B', 'K', 'Si', 'Cu', 'Mg', 'Hg', 'Cr', 'Zr', 'Sn', 'Na', 'Ba', 'Au', 'Pd', 'Tl', 'Fe', 'Al', 'Gd', 'Ag', 'Mo', 'V', 'Nd', 'Co', 'Yb', 'Pb', 'Sb', 'In', 'Li', 'Ni', 'Bi', 'Cd', 'Ti', 'Se', 'Dy', 'Mn', 'Sr', 'Be', 'Pt']:
             self.orbits += [atom + orb for orb in ['s', 'px', 'py', 'pz']]
         self.reverse_map = {x: idx for idx, x in enumerate(self.orbits)}
         self.ENDL = len(self.orbits)

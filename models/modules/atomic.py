@@ -19,10 +19,13 @@ def scaled_weighted_dot_product_attention(q, k, v, weight, mask):
     Returns:
       output, attention_weights
     """
+
     matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)
 
     # Weighting, note that weight may considered as additive term.
     matmul_qk = matmul_qk
+
+    # --- SOFTMAX VER. ---
 
     # scale matmul_qk
     dk = tf.cast(tf.shape(k)[-1], tf.float32)
@@ -35,6 +38,24 @@ def scaled_weighted_dot_product_attention(q, k, v, weight, mask):
     # softmax is normalized on the last axis (seq_len_k) so that the scores
     # add up to 1.
     attention_weights = tf.nn.softmax(scaled_attention_logits, axis=-1)  # (..., seq_len_q, seq_len_k)
+    # --- SOFTMAX VER. End---
+    '''
+    # --- Scalar VER. ---
+    dk = tf.cast(tf.shape(k)[-1], tf.float32)
+    scaled_attention_logits = matmul_qk / tf.math.sqrt(dk)
+
+    # add the mask to the scaled tensor.
+    if mask is not None:
+        scaled_attention_logits += (mask * -1e9)
+
+    # softmax is normalized on the last axis (seq_len_k) so that the scores
+    # add up to 1.
+    attention_weights = tf.keras.utils.normalize(scaled_attention_logits, order=1)
+    attention_weights = attention_weights * tf.exp(weight)
+    attention_weights = tf.keras.utils.normalize(attention_weights, order=1)
+    
+    # --- Scalar VER. End ---
+    '''
 
     output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
 
@@ -83,6 +104,7 @@ class AtomicMultiHeadAttention(tf.keras.layers.Layer):
         # attention_weights.shape == (batch_size, num_heads, seq_len_q, seq_len_k)
         shift_distance = tf.expand_dims(weight, axis=-1)
         # shift_distance = self.distance_dense(shift_distance)
+
         shift_distance = tf.matmul(shift_distance, [np.arange(0.1, 10+0.01, 9.9/(self.num_heads-1)).tolist()])
         shift_distance = tf.transpose(shift_distance, perm=[0, 3, 1, 2])
         scaled_attention, attention_weights = scaled_weighted_dot_product_attention(

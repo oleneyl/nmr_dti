@@ -213,6 +213,55 @@ class NMRPredictionAtomicDatasetReader(NMRPredictionDatasetReaer):
 
         return position_matrix, direction_matrix, embedding_list, atom_to_orbital, nmr_value_list, mask
 
+def get_positional_information(smiles):
+    # Transform given molecule into SMILES without Hydrogen
+    mol = Chem.MolFromSmiles(smiles)
+    mol = Chem.AddHs(mol)
+    AllChem.EmbedMolecule(mol, randomSeed=0xf00d)
+    conformer = mol.GetConformers()
+    if len(conformer) == 0:
+        return None
+    else:
+        conformer = conformer[0]
+
+    # Conformation
+    position_raw = conformer.GetPositions()
+
+    # NMR value
+    atom_to_orbital = []
+
+    direction_matrix = []
+    position_matrix = []
+    embedding_list = []
+
+    orbital_index = 0
+    for idx, atom in enumerate(mol.GetAtoms()):
+        # Orbital Map
+        if atom.GetAtomicNum() == 1:
+            atom_to_orbital.append([idx, orbital_index])
+            direction_matrix.append([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+
+            position_matrix.append(position_raw[idx])
+            embedding_list.append(atom.GetSymbol() + 's')
+
+            orbital_index += 1
+        else:
+            for i in range(4):
+                atom_to_orbital.append([idx, orbital_index + i])
+                position_matrix.append(position_raw[idx])
+
+            direction_matrix.append([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+            direction_matrix.append([[1, 0, 0], [0, 0, 0], [0, 0, 0]])
+            direction_matrix.append([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
+            direction_matrix.append([[0, 0, 1], [0, 0, 0], [0, 0, 0]])
+
+            for orb in ['s', 'px', 'py', 'pz']:
+                embedding_list.append(atom.GetSymbol() + orb)
+
+            orbital_index += 4
+
+    return position_matrix, direction_matrix, embedding_list, atom_to_orbital
+
 
 def create_mask(position, direction):
     # direction :
