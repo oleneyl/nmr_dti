@@ -4,7 +4,7 @@ from .nmr_prediction_dataset import get_positional_information, create_mask
 from .data_utils.vocab import AtomOrbitalVocab
 
 
-class Tox21DatasetLoader():
+class MoleculeNetDatasetLoader(object):
     def __init__(self, data_type, batch_size=1,
                  chemical_sequence_length=256,
                  training=True):
@@ -15,10 +15,13 @@ class Tox21DatasetLoader():
         self.chemical_sequence_length = chemical_sequence_length
         self.training = training
         self.vocab = AtomOrbitalVocab()
-        task, dataset, tf = deepchem.molnet.load_tox21()
         self.batch_size = batch_size
-        self._task = task
 
+        task, dataset, tf = self.load_dataset()
+        self._task = task
+        self._transformer = tf
+
+        # Dataset type check
         if data_type == 'train':
             self._dataset = dataset[0]
         elif data_type == 'valid':
@@ -26,9 +29,15 @@ class Tox21DatasetLoader():
         elif data_type == 'test':
             self._dataset = dataset[2]
         else:
-            raise TypeError('Dataset type must be train, valid or test')
+            raise TypeError('Dataset type must be train, valid or test.')
 
-        self._transformer = tf
+    def load_dataset(self):
+        # Load dataset by using deepchem package
+        raise NotImplementedError("Must implement which dataset to be loaded.")
+
+    def unpack_item(self, listed_item):
+        # unpack given item format into (feature, label, smiles) tuple
+        raise NotImplementedError("Must implement how to unpack item.")
 
     def reset(self):
         pass
@@ -37,7 +46,7 @@ class Tox21DatasetLoader():
         batch = []
         for item in self._dataset.itersamples():
             listed_item = list(item)
-            feature, label, existance, smiles = listed_item
+            feature, label, smiles = self.unpack_item(listed_item)
 
             _intermediate = get_positional_information(smiles)
             if _intermediate is None:
@@ -80,3 +89,106 @@ class Tox21DatasetLoader():
                 yield [np.array(x) for x in zip(*batch)]
                 batch = []
 
+
+class Tox21DatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_tox21()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class BBBPDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_bbbp()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class ToxCastDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_toxcast()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class SIDERDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_sider()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class ClinToxDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_clintox()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class MUVDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_muv()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class HIVDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_hiv()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class BACEClassificationDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_bace_classification()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+AVAILABLE_MOLECULENET_TASK = {
+    'Tox21': Tox21DatasetLoader,
+    'BBBP': BBBPDatasetLoader,
+    'ToxCast': ToxCastDatasetLoader,
+    'SIDER': SIDERDatasetLoader,
+    'ClinTox': ClinToxDatasetLoader,
+    'MUV': MUVDatasetLoader,
+    'HIV': HIVDatasetLoader,
+    'BACE': BACEClassificationDatasetLoader,
+}
+
+
+def get_dataset_loader(task, data_type, batch_size=1,
+                 chemical_sequence_length=256,
+                 training=True):
+    if task not in AVAILABLE_MOLECULENET_TASK:
+        raise TypeError(f'Given task f{task} does not exist.')
+
+    return AVAILABLE_MOLECULENET_TASK[task](data_type,
+                                            batch_size=batch_size,
+                                            chemical_sequence_length=chemical_sequence_length,
+                                            training=training)

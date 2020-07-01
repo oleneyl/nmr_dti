@@ -3,30 +3,36 @@ import numpy as np
 import os
 
 from options import get_args
-from models.label_inference import AtomicNet
-from models.modules.attention import create_padding_mask
+from models.label_inference import InferenceAtomicNet
 from progress import get_progress_handler
-from preprocess.moleculenet import Tox21DatasetLoader
+from preprocess.moleculenet import get_dataset_loader
 from learning_rate import get_learning_rate_scheduler
 from pprint import pprint
 from sklearn.metrics import roc_auc_score
+from models.fit_moleculenet_task import get_moleculenet_task_dependent_arguments
 
-def multi_auroc(y_true, y_pred):  # Should be calculated over whole batch
+def multi_auroc(y_true, y_pred, label_count):  # Should be calculated over whole batch
     print(y_true.shape)
     print(y_pred.shape)
     output = []
-    for idx in range(12):
+    for idx in range(label_count):
         y_true_v = y_true[:, idx]
         y_pred_v = y_pred[:, idx]
         try:
             score = roc_auc_score(y_true_v, y_pred_v)
         except ValueError:
-            score =0.5
+            score = None
+
         output.append(score)
 
-    mean = np.mean(output)
+    corrected_output = [0.5 if x is None else x for x in output]
+    filtered_output = [x for x in output if x is not None]
 
-    return mean, output
+    corrected_mean = np.mean(corrected_output)
+    filtered_mean = np.mean(filtered_output)
+
+    return corrected_mean, filtered_mean, output
+
 
 def train(args):
     def create_input_sample(_datum):
@@ -34,11 +40,11 @@ def train(args):
         _pad_mask = _pad_mask[:, tf.newaxis, tf.newaxis, :]
         # _pad_mask = create_padding_mask(_smiles)
         return ([_embedding_list,
-                np.stack([np.eye(_embedding_list.shape[-1]) for i in range(_embedding_list.shape[0])], axis=0),
-                _distance,
-                _angular_distance,
-                _orbital_matrix,
-                _pad_mask], _labels)
+                 np.stack([np.eye(_embedding_list.shape[-1]) for i in range(_embedding_list.shape[0])], axis=0),
+                 _distance,
+                 _angular_distance,
+                 _orbital_matrix,
+                 _pad_mask], _labels)
 
     print("***  Run environment  ***")
     pprint(args)
@@ -48,7 +54,11 @@ def train(args):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_number)
 
     # Create model
-    nmr_interaction = AtomicNet(args)
+    model_fitting_information = get_moleculenet_task_dependent_arguments(args.moleculenet_task)
+    nmr_interaction = InferenceAtomicNet(args,
+                                         label_count=model_fitting_information['label_count'],
+                                         is_regression=model_fitting_information['is_regression'])
+
     model = nmr_interaction.create_keras_model()
 
     # Learning rate
@@ -75,12 +85,11 @@ def train(args):
     for epoch in range(1, args.epoch + 1):
         model.reset_metrics()
         # TODO data loader must be changed
-        # train_data = NMRDataLoader(args.nmr_dir, 'train', batch_size=args.batch_size, chemical_sequence_length=args.chemical_sequence_length)
-        train_data = Tox21DatasetLoader('train', batch_size=args.batch_size,
-                                       chemical_sequence_length=args.chemical_sequence_length)
-        valid_data = Tox21DatasetLoader('valid', batch_size=args.batch_size,
-                                       chemical_sequence_length=args.chemical_sequence_length)
-        test_data = Tox21DatasetLoader('test', batch_size=args.batch_size,
+        train_data = get_dataset_loader(args.moleculenet_task, 'train', batch_size=args.batch_size,
+                                        chemical_sequence_length=args.chemical_sequence_length)
+        valid_data = get_dataset_loader(args.moleculenet_task, 'valid', batch_size=args.batch_size,
+                                        chemical_sequence_length=args.chemical_sequence_length)
+        test_data = get_dataset_loader(args.moleculenet_task, 'test', batch_size=args.batch_size,
                                        chemical_sequence_length=args.chemical_sequence_length)
 
         print(f'Epoch {epoch} start')
@@ -100,9 +109,10 @@ def train(args):
                 print(model.predict(xs)[0])
                 '''
                 logger.emit("Training", metrics_names, result)
-                mean, output = multi_auroc(ys, model.predict(xs))
-                logger.print_log("AUROC : {mean}")
-                logger.print_log(f"Each : {str(output)}")
+                corrected_mean, filtered_mean, output = multi_auroc(ys, model.predict(xs),
+                                                                    model_fitting_information['label_count'])
+                logger.print_log(f"AUC-ROC : corrected | {corrected_mean}, filtered | {filtered_mean}")
+                # logger.print_log(f"Each : {str(output)}")
                 tensorboard.create_summary(global_step, result, model, prefix='train')
 
         # Validation / Test

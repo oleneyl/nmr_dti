@@ -12,6 +12,8 @@ def get_args():
     base_group.add_argument('--drop_smile', action='store_true', help='If true, do not use SMILES data for prediction')
     base_group.add_argument('--skip_test', action='store_true', help='If true, do not use test dataset')
     base_group.add_argument('--save_best', action='store_true', help='If true, save best models')
+    base_group.add_argument('--moleculenet_task', default='deactivated', help='Indicate which moleculenet task may used.')
+
     add_data_util_args(parser)
     add_model_args(parser)
     add_progress_args(parser)

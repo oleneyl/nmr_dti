@@ -4,8 +4,11 @@ from .sequence import NMRInferenceModel
 from .modules.atomic import AtomicLayer
 
 
-class AtomicNet(object):
-    def __init__(self, args):
+class InferenceAtomicNet(object):
+    def __init__(self, args,
+                 label_count=12,
+                 is_regression=False):
+
         atomic_length = args.chemical_sequence_length // 2
         self._atom_type = tf.keras.Input(shape=[args.chemical_sequence_length], dtype=tf.int32, name='atom_input')
         self._orbit_coeff = tf.keras.Input(shape=[args.chemical_sequence_length, args.chemical_sequence_length], dtype=tf.float32)
@@ -14,19 +17,25 @@ class AtomicNet(object):
         self._extract_matrix = tf.keras.Input(shape=[atomic_length, args.chemical_sequence_length], dtype=tf.float32)
         self._pad_mask = tf.keras.Input(shape=[1, 1, args.chemical_sequence_length], dtype=tf.float32,
                                           name='pad_mask')
+
         self.args = args
+        self.label_count = label_count
+        self.is_regression = is_regression
+
 
         with tf.name_scope('chemical'):
             self.nmr_model = NMRInferenceModel(args, args.chemical_vocab_size, vectorized=True)
 
         self.embedding = tf.keras.layers.Embedding(args.chemical_vocab_size, args.transformer_model_dim)
         self.atomic_layer = [
-            AtomicLayer(args.transformer_model_dim, args.transformer_num_heads, args.transformer_hidden_dimension) for i in range(args.transformer_num_layers)
+            AtomicLayer(args.transformer_model_dim,
+                        args.transformer_num_heads,
+                        args.transformer_hidden_dimension) for i in range(args.transformer_num_layers)
         ]
         self.layer_num = args.transformer_num_layers
 
         self.collect_dense = tf.keras.layers.Dense(1)
-        self.output_dense = tf.keras.layers.Dense(12) # Output dependente TODO
+        self.output_dense = tf.keras.layers.Dense(self.label_count)
 
     def inputs(self):
         return [self._atom_type,
@@ -57,7 +66,9 @@ class AtomicNet(object):
         inference_output = self.collect_dense(gather_state)
         inference_output = tf.squeeze(inference_output, axis=-1)
         inference_output = self.output_dense(inference_output)
-        inference_output = tf.nn.sigmoid(inference_output)
+
+        if not self.is_regression:
+            inference_output = tf.nn.sigmoid(inference_output)
         return inference_output
 
     def create_keras_model(self):
