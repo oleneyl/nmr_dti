@@ -213,19 +213,46 @@ class NMRPredictionAtomicDatasetReader(NMRPredictionDatasetReaer):
 
         return position_matrix, direction_matrix, embedding_list, atom_to_orbital, nmr_value_list, mask
 
-def get_positional_information(smiles):
-    # Transform given molecule into SMILES without Hydrogen
-    mol = Chem.MolFromSmiles(smiles)
-    mol = Chem.AddHs(mol)
-    AllChem.EmbedMolecule(mol, randomSeed=0xf00d)
-    conformer = mol.GetConformers()
-    if len(conformer) == 0:
+
+def get_positional_information(smiles, conformer=None, mol=None):
+    # If Mol not given, Transform given molecule into SMILES without Hydrogen
+    if mol is None:
+        mol = Chem.MolFromSmiles(smiles)
+
+    # If SMILES parsing fail, return None
+    if mol is None:
         return None
-    else:
-        conformer = conformer[0]
+
+    add_hydrogen = True
+
+    for idx, atom in enumerate(mol.GetAtoms()):
+        # Orbital Map
+        if atom.GetAtomicNum() == 1:
+            add_hydrogen = False
+
+    if add_hydrogen:
+        mol = Chem.AddHs(mol)
+
+    # If conformer not given, create conformer
+    if conformer is None:
+        AllChem.EmbedMolecule(mol, randomSeed=0xf00d)
+        conformer = mol.GetConformers()
+        if len(conformer) == 0:
+            return None
+        else:
+            conformer = conformer[0]
 
     # Conformation
     position_raw = conformer.GetPositions()
+    '''
+    print('--')
+    print(smiles)
+    print(len(mol.GetAtoms()))
+
+    print(position_raw.shape)
+    print(len(mol.GetAtoms()))
+    print('--')
+    '''
 
     # NMR value
     atom_to_orbital = []
@@ -233,6 +260,16 @@ def get_positional_information(smiles):
     direction_matrix = []
     position_matrix = []
     embedding_list = []
+
+    if mol.GetNumAtoms() != position_raw.shape[0]:
+        print('--')
+        print(smiles)
+        print(len(mol.GetAtoms()))
+
+        print(position_raw.shape)
+        print('--')
+        return None
+        # raise ValueError('Size not matching, molecule and SMILES.')
 
     orbital_index = 0
     for idx, atom in enumerate(mol.GetAtoms()):
@@ -271,7 +308,7 @@ def create_mask(position, direction):
     position_t = np.transpose(position, (1, 0, 2))
 
     vector = position - position_t
-    distance = np.sqrt(np.sum(np.square(vector), axis=-1)) + np.eye(position.shape[0]) * 1e-10
+    distance = np.sqrt(np.sum(np.square(vector), axis=-1)) + np.eye(position.shape[0]) * 0.1
 
     mask = (np.sum(direction, axis=-1) != 0).astype(np.int32)  # [L, 3]
 

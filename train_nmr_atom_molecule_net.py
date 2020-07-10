@@ -11,6 +11,19 @@ from pprint import pprint
 from sklearn.metrics import roc_auc_score
 from models.fit_moleculenet_task import get_moleculenet_task_dependent_arguments
 
+
+def wrapped_roc_auc_score(y_true, y_pred):
+    try:
+        x = roc_auc_score(y_true, y_pred)
+        return x
+    except ValueError:
+        return 0.5
+
+
+def auroc(y_true, y_pred):  # Should be calculated over whole batch
+    return tf.py_func(wrapped_roc_auc_score, (y_true, y_pred), tf.double)
+
+
 def multi_auroc(y_true, y_pred, label_count):  # Should be calculated over whole batch
     print(y_true.shape)
     print(y_pred.shape)
@@ -65,13 +78,21 @@ def train(args):
     learning_rate_scheduler = get_learning_rate_scheduler(model, args)
 
     # Compile model with metrics
-    model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
-                  loss=tf.keras.losses.BinaryCrossentropy(),
-                  metrics=['accuracy',
-                           tf.keras.metrics.Precision(name='precision'),
-                           tf.keras.metrics.Recall(name='recall'),
-                           tf.keras.metrics.FalsePositives(name='false_positives'),
-                           tf.keras.metrics.FalseNegatives(name='false_negatives')])
+    if model_fitting_information['is_regression']:
+        model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
+                      loss=tf.keras.losses.MSE,
+                      metrics=[tf.keras.losses.MSE])
+    else:
+        metrics = ['accuracy',
+                   tf.keras.metrics.Precision(name='precision'),
+                   tf.keras.metrics.Recall(name='recall'),
+                   tf.keras.metrics.FalsePositives(name='false_positives'),
+                   tf.keras.metrics.FalseNegatives(name='false_negatives')]
+        if model_fitting_information['label_count'] == 1:
+            metrics += [auroc]
+        model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
+                      loss=tf.keras.losses.BinaryCrossentropy(),
+                      metrics=metrics)
     # Summary
     model.summary()
     tensorboard, logger = get_progress_handler(args)
@@ -103,16 +124,15 @@ def train(args):
             result = model.train_on_batch(xs, ys)
             global_step += 1
             if idx % args.log_interval == 0:
-                '''
-                print([(x[0],'\n') for x in xs])
-                print(ys[0])
-                print(model.predict(xs)[0])
-                '''
+
+                # print([(x[0],'\n') for x in xs])
                 logger.emit("Training", metrics_names, result)
-                corrected_mean, filtered_mean, output = multi_auroc(ys, model.predict(xs),
-                                                                    model_fitting_information['label_count'])
-                logger.print_log(f"AUC-ROC : corrected | {corrected_mean}, filtered | {filtered_mean}")
-                # logger.print_log(f"Each : {str(output)}")
+
+                if not model_fitting_information['is_regression']:
+                    corrected_mean, filtered_mean, output = multi_auroc(ys, model.predict(xs),
+                                                                        model_fitting_information['label_count'])
+                    logger.print_log(f"AUC-ROC : corrected | {corrected_mean}, filtered | {filtered_mean}")
+
                 tensorboard.create_summary(global_step, result, model, prefix='train')
 
         # Validation / Test

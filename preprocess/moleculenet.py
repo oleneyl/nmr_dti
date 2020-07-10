@@ -2,7 +2,7 @@ import numpy as np
 import deepchem
 from .nmr_prediction_dataset import get_positional_information, create_mask
 from .data_utils.vocab import AtomOrbitalVocab
-
+from .extensions.loader import load_qm9
 
 class MoleculeNetDatasetLoader(object):
     def __init__(self, data_type, batch_size=1,
@@ -42,13 +42,23 @@ class MoleculeNetDatasetLoader(object):
     def reset(self):
         pass
 
+    def get_molecule(self, listed_item):
+        # If molecule was already given, return molecule. If not, return None.
+        return None
+
+    def get_conformer(self, listed_item):
+        # If conformer was already given, return conformer. If not, return None.
+        return None
+
     def __iter__(self):
         batch = []
         for item in self._dataset.itersamples():
             listed_item = list(item)
             feature, label, smiles = self.unpack_item(listed_item)
 
-            _intermediate = get_positional_information(smiles)
+            _intermediate = get_positional_information(smiles,
+                                                       conformer=self.get_conformer(listed_item),
+                                                       mol=self.get_molecule(listed_item))
             if _intermediate is None:
                 continue
             else:
@@ -170,6 +180,70 @@ class BACEClassificationDatasetLoader(MoleculeNetDatasetLoader):
         return feature, label, smiles
 
 
+class QM8DatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return deepchem.molnet.load_qm8()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+
+class QM9DatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return load_qm9()
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        return feature, label, smiles
+
+    def get_conformer(self, listed_item):
+        # If conformer was already given, return conformer. If not, return None.
+        feature, label, _, smiles = listed_item
+        '''
+        print(smiles)
+        print(feature[0])
+        print(feature[0].GetConformers())
+        print(feature[0].GetConformers()[0].GetPositions().shape)
+        '''
+        return feature[0].GetConformers()[0]
+
+    def get_molecule(self, listed_item):
+        # If conformer was already given, return conformer. If not, return None.
+        feature, label, _, smiles = listed_item
+        return feature[0]
+
+
+class QM9SingleDatasetLoader(MoleculeNetDatasetLoader):
+    def load_dataset(self):
+        return load_qm9(move_mean=False)
+
+    def unpack_item(self, listed_item):
+        # _ : existence
+        feature, label, _, smiles = listed_item
+        # HOMO
+        return feature, label[2] * 27.2114, smiles
+
+    def get_conformer(self, listed_item):
+        # If conformer was already given, return conformer. If not, return None.
+        feature, label, _, smiles = listed_item
+        '''
+        print(smiles)
+        print(feature[0])
+        print(feature[0].GetConformers())
+        print(feature[0].GetConformers()[0].GetPositions().shape)
+        '''
+        return feature[0].GetConformers()[0]
+
+    def get_molecule(self, listed_item):
+        # If conformer was already given, return conformer. If not, return None.
+        feature, label, _, smiles = listed_item
+        return feature[0]
+
+
+
 AVAILABLE_MOLECULENET_TASK = {
     'Tox21': Tox21DatasetLoader,
     'BBBP': BBBPDatasetLoader,
@@ -179,6 +253,9 @@ AVAILABLE_MOLECULENET_TASK = {
     'MUV': MUVDatasetLoader,
     'HIV': HIVDatasetLoader,
     'BACE': BACEClassificationDatasetLoader,
+    'QM8': QM8DatasetLoader,
+    'QM9': QM9DatasetLoader,
+    'QM9Single': QM9SingleDatasetLoader,
 }
 
 

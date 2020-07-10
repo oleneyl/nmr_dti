@@ -53,7 +53,7 @@ class InferenceAtomicNet(object):
         orbit_coeff = self._orbit_coeff
         for i in range(self.layer_num):
             # orbit_state, orbit_coeff = self.atomic_layer[i]([orbit_state, orbit_coeff, -1 * self._distance], mask=self._pad_mask)
-            orbit_state = self.atomic_layer[i]([orbit_state, -1 * self._distance], mask=self._pad_mask)
+            orbit_state = self.atomic_layer[i]([orbit_state, self._distance], mask=self._pad_mask)
         with tf.name_scope('matmul_test_1'):
             print('state_output')
             print(orbit_state.shape, orbit_coeff.shape)
