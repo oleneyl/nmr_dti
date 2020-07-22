@@ -1,22 +1,22 @@
 {
   "hmdb" : {
-    "xml": "/DATA/meson324/hmdb_metabolites/hmdb_metabolites.xml",
+    "xml": "/media/DATA/meson324/hmdb_metabolites/hmdb_metabolites.xml",
     "export_order" : ["cas_registry_number", "hmdb_id", "inchikey", "protein_associations","pubchem_id"],
-    "export_endpoint" : "/DATA/meson324/hmdb_metabolites/hmdb_metabolites_export.json",
-    "nmr_endpoint" : "/DATA/meson324/hmdb_metabolites/hmdb_metabolites_export.mix_nmr",
+    "export_endpoint" : "/media/DATA/meson324/hmdb_metabolites/hmdb_metabolites_export.json",
+    "nmr_endpoint" : "/media/DATA/meson324/hmdb_metabolites/hmdb_metabolites_export.mix_nmr",
     "objectives" : ["cas_registry_number", "hmdb_id", "inchikey", "protein_associations","smiles"]
   },
   "uniprot" : {
-    "xml" : "/DATA/meson324/uniprot_sprot.xml",
+    "xml" : "/media/DATA/meson324/uniprot_sprot.xml",
     "export_order" : [""],
     "objectives" : ["uniprot_id", "subcellular","sequence"],
-    "export_endpoint" : "/DATA/meson324/uniprot_sprot_export.json"
+    "export_endpoint" : "/media/DATA/meson324/uniprot_sprot_export.json"
   },
   "trainable" : {
-    "train" : "/DATA/meson324/train.json",
-    "valid" : "/DATA/meson324/valid.json"
+    "train" : "/media/DATA/meson324/train.json",
+    "valid" : "/media/DATA/meson324/valid.json"
   },
   "nmr" : {
-    "engine_dir" : "/DATA/meson324/hmdb_fid_files_unzipped"
+    "engine_dir" : "/media/DATA/meson324/hmdb_fid_files_unzipped"
   }
 }

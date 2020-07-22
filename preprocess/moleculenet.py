@@ -86,6 +86,7 @@ class MoleculeNetDatasetLoader(object):
                 else:
                     orbital_matrix[a_idx, o_idx] = 1
 
+
             packet = [embedding_list[:self.chemical_sequence_length],
                       distance,
                       angular_distance,
@@ -224,7 +225,7 @@ class QM9SingleDatasetLoader(MoleculeNetDatasetLoader):
         # _ : existence
         feature, label, _, smiles = listed_item
         # HOMO
-        return feature, label[2] * 27.2114, smiles
+        return feature, [label[2] * 27.2114], smiles
 
     def get_conformer(self, listed_item):
         # If conformer was already given, return conformer. If not, return None.

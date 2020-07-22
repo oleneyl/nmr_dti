@@ -214,7 +214,7 @@ class NMRPredictionAtomicDatasetReader(NMRPredictionDatasetReaer):
         return position_matrix, direction_matrix, embedding_list, atom_to_orbital, nmr_value_list, mask
 
 
-def get_positional_information(smiles, conformer=None, mol=None):
+def get_positional_information(smiles, conformer=None, mol=None, repeat=1):
     # If Mol not given, Transform given molecule into SMILES without Hydrogen
     if mol is None:
         mol = Chem.MolFromSmiles(smiles)
@@ -283,19 +283,20 @@ def get_positional_information(smiles, conformer=None, mol=None):
 
             orbital_index += 1
         else:
-            for i in range(4):
+            for i in range(repeat):
                 atom_to_orbital.append([idx, orbital_index + i])
                 position_matrix.append(position_raw[idx])
 
-            direction_matrix.append([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
-            direction_matrix.append([[1, 0, 0], [0, 0, 0], [0, 0, 0]])
-            direction_matrix.append([[0, 1, 0], [0, 0, 0], [0, 0, 0]])
-            direction_matrix.append([[0, 0, 1], [0, 0, 0], [0, 0, 0]])
+            for i in range(repeat):
+                input_direction = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
+                if i > 0:
+                    input_direction[0][i-1] = 1
+                direction_matrix.append(input_direction)
 
-            for orb in ['s', 'px', 'py', 'pz']:
+            for orb in ['s', 'px', 'py', 'pz'][:repeat]:
                 embedding_list.append(atom.GetSymbol() + orb)
 
-            orbital_index += 4
+            orbital_index += repeat
 
     return position_matrix, direction_matrix, embedding_list, atom_to_orbital
 
@@ -308,7 +309,9 @@ def create_mask(position, direction):
     position_t = np.transpose(position, (1, 0, 2))
 
     vector = position - position_t
-    distance = np.sqrt(np.sum(np.square(vector), axis=-1)) + np.eye(position.shape[0]) * 0.1
+    distance = np.sqrt(np.sum(np.square(vector), axis=-1))
+
+    distance = distance + np.eye(distance.shape[0]) * 1e9
 
     mask = (np.sum(direction, axis=-1) != 0).astype(np.int32)  # [L, 3]
 

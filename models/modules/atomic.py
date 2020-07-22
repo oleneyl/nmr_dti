@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 from .attention import point_wise_feed_forward_network
+import sys
 
 def scaled_weighted_dot_product_attention(q, k, v, weight, mask):
     """Calculate the attention weights.
@@ -22,14 +23,14 @@ def scaled_weighted_dot_product_attention(q, k, v, weight, mask):
 
     matmul_qk = tf.matmul(q, k, transpose_b=True)  # (..., seq_len_q, seq_len_k)
 
+    '''
     # Weighting, note that weight may considered as additive term.
     matmul_qk = matmul_qk
-    '''
     # --- SOFTMAX VER. ---
 
     # scale matmul_qk
     dk = tf.cast(tf.shape(k)[-1], tf.float32)
-    scaled_attention_logits = matmul_qk / tf.math.sqrt(dk) + weight
+    scaled_attention_logits = matmul_qk / tf.math.sqrt(dk) + weight / tf.math.sqrt(dk)
 
     # add the mask to the scaled tensor.
     if mask is not None:
@@ -53,10 +54,10 @@ def scaled_weighted_dot_product_attention(q, k, v, weight, mask):
     # softmax is normalized on the last axis (seq_len_k) so that the scores
     # add up to 1.
     # attention_weights = tf.keras.utils.normalize(scaled_attention_logits, order=1)
-    attention_weights = scaled_attention_logits * weight
+    attention_weights = scaled_attention_logits
     attention_weights = tf.nn.softmax(attention_weights, axis=-1)  # (..., seq_len_q, seq_len_k)
     # attention_weights = tf.keras.utils.normalize(attention_weights, order=1)
-    
+    attention_weights = attention_weights * weight
     # --- Scalar VER. End ---
 
     output = tf.matmul(attention_weights, v)  # (..., seq_len_q, depth_v)
@@ -79,9 +80,6 @@ class AtomicMultiHeadAttention(tf.keras.layers.Layer):
         self.wv = tf.keras.layers.Dense(d_model)
 
         self.dense = tf.keras.layers.Dense(d_model)
-
-        self.attention_dense = tf.keras.layers.Dense(1)
-        self.distance_dense = tf.keras.layers.Dense(self.num_heads)
 
     def split_heads(self, x, batch_size):
         """Split the last dimension into (num_heads, depth).
@@ -108,10 +106,14 @@ class AtomicMultiHeadAttention(tf.keras.layers.Layer):
         # shift_distance = self.distance_dense(shift_distance)
 
         # shift_distance = tf.matmul(shift_distance, [np.arange(0.1, 10+0.01, 9.9/(self.num_heads-1)).tolist()])
-        shift_distance = 1 / shift_distance
+        # shift_distance = 1 / (shift_distance)
         shift_distance = tf.transpose(shift_distance, perm=[0, 3, 1, 2])
+        shift_distance = -1 * shift_distance
         scaled_attention, attention_weights = scaled_weighted_dot_product_attention(
             q, k, v, shift_distance, mask)
+
+        # ---- ---- #
+        # scaled_attention = tf.Print(scaled_attention, [attention_weights[0][0][0][0:30], weight[0][0][0:30], shift_distance[0][0][0][0:30],'\n\n'], summarize=-1)
 
         scaled_attention = tf.transpose(scaled_attention,
                                         perm=[0, 2, 1, 3])  # (batch_size, seq_len_q, num_heads, depth)
@@ -119,8 +121,8 @@ class AtomicMultiHeadAttention(tf.keras.layers.Layer):
         concat_attention = tf.reshape(scaled_attention,
                                       (batch_size, -1, self.d_model))  # (batch_size, seq_len_q, d_model)
 
-        attention_weights = tf.transpose(attention_weights,
-                                        perm=[0, 2, 3, 1])  # (batch_size, seq_len_q, seq_len_k, num_heads)
+        # attention_weights = tf.transpose(attention_weights,
+        #                                 perm=[0, 2, 3, 1])  # (batch_size, seq_len_q, seq_len_k, num_heads)
         """
         with tf.name_scope('test_1'):
             attention_weights = self.attention_dense(attention_weights)  # (batch_size, seq_len_q, seq_len_k, 1)
@@ -130,11 +132,11 @@ class AtomicMultiHeadAttention(tf.keras.layers.Layer):
         """
         output = self.dense(concat_attention)  # (batch_size, seq_len_q, d_model)
 
-        return output # , attention_weights
+        return output, attention_weights
 
 
 class AtomicLayer(tf.keras.layers.Layer):
-    def __init__(self, d_model, num_heads, dff, rate=0.1):
+    def __init__(self, d_model, num_heads, dff, rate=0.0):
         super(AtomicLayer, self).__init__()
 
         self.creator = AtomicMultiHeadAttention(d_model, num_heads)
@@ -148,15 +150,16 @@ class AtomicLayer(tf.keras.layers.Layer):
 
         # self.updater = AtomicMultiHeadAttention(d_model, num_heads)
 
-    def call(self, state_coeff_weight, mask=None, training=None):
-        orbital_state, overlap_weight = state_coeff_weight
+    def call(self, state_weight, mask=None, training=None):
+        orbital_state, overlap_weight = state_weight
         total_state = orbital_state
 
         # Creator
         # attn_output, new_coeff = self.creator(total_state, total_state, total_state, overlap_weight, mask=mask, training=training)
-        attn_output = self.creator([total_state, total_state, total_state, overlap_weight], mask=mask, training=training)
+        attn_output, _ = self.creator([total_state, total_state, total_state, overlap_weight], mask=mask, training=training)
         attn_output = self.dropout1(attn_output, training=training)
         out1 = self.layernorm1(orbital_state + attn_output)  # (batch_size, input_seq_len, d_model)
+        print(out1, 'layernorm_size')
 
         ffn_output = self.ffn(out1)  # (batch_size, input_seq_len, d_model)
         ffn_output = self.dropout2(ffn_output, training=training)

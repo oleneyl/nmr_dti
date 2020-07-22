@@ -50,6 +50,7 @@ def multi_auroc(y_true, y_pred, label_count):  # Should be calculated over whole
 def train(args):
     def create_input_sample(_datum):
         _embedding_list, _distance, _angular_distance, _orbital_matrix, _labels, _pad_mask = _datum
+        _output_mask = 1.0 - _pad_mask
         _pad_mask = _pad_mask[:, tf.newaxis, tf.newaxis, :]
         # _pad_mask = create_padding_mask(_smiles)
         return ([_embedding_list,
@@ -57,13 +58,14 @@ def train(args):
                  _distance,
                  _angular_distance,
                  _orbital_matrix,
-                 _pad_mask], _labels)
+                 _pad_mask,
+                 _output_mask], _labels)
 
     print("***  Run environment  ***")
     pprint(args)
     print("\n")
 
-    # Device setting
+        # Device setting
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_number)
 
     # Create model
@@ -79,6 +81,7 @@ def train(args):
 
     # Compile model with metrics
     if model_fitting_information['is_regression']:
+        print('--- Regression Task ---')
         model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
                       loss=tf.keras.losses.MSE,
                       metrics=[tf.keras.losses.MSE])
@@ -90,9 +93,11 @@ def train(args):
                    tf.keras.metrics.FalseNegatives(name='false_negatives')]
         if model_fitting_information['label_count'] == 1:
             metrics += [auroc]
+
         model.compile(optimizer=tf.keras.optimizers.Adam(args.lr),
                       loss=tf.keras.losses.BinaryCrossentropy(),
                       metrics=metrics)
+
     # Summary
     model.summary()
     tensorboard, logger = get_progress_handler(args)
@@ -120,11 +125,13 @@ def train(args):
         # Train
         for idx, datum in enumerate(train_data):
             xs, ys = create_input_sample(datum)
+            # print(ys[:10])
             # print([x[0] for x in xs])
-            result = model.train_on_batch(xs, ys)
             global_step += 1
-            if idx % args.log_interval == 0:
-
+            if idx % args.log_interval != 0:
+                result = model.train_on_batch(xs, ys, reset_metrics=False)
+            else:
+                result = model.train_on_batch(xs, ys, reset_metrics=True)
                 # print([(x[0],'\n') for x in xs])
                 logger.emit("Training", metrics_names, result)
 
